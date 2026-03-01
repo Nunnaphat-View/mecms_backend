@@ -1,0 +1,49 @@
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsEmail,
+  IsInt,
+  MinLength,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class RegisterDto {
+  @ApiProperty({ example: 'johndoe', description: 'ชื่อผู้ใช้' })
+  @IsNotEmpty()
+  @IsString()
+  username: string;
+
+  @ApiProperty({ example: '123456', description: 'รหัสผ่าน (ขั้นต่ำ 6 ตัวอักษร)', minLength: 6 })
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(6)
+  password: string;
+
+  @ApiPropertyOptional({ example: 'john@example.com', description: 'อีเมล' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional({ example: 'John Doe', description: 'ชื่อ-นามสกุล' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ example: '0812345678', description: 'เบอร์โทรศัพท์' })
+  @IsOptional()
+  @IsString()
+  tel?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg', description: 'URL รูปภาพ' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID ของ Role' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  roleId?: number;
+}
