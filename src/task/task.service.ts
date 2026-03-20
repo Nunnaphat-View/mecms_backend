@@ -34,6 +34,7 @@ export class TaskService {
       relations: [
         'technician',
         'equipment',
+        'equipment.equipmentType',
         'approver',
         'environments',
         'measurements',
@@ -54,6 +55,7 @@ export class TaskService {
       relations: [
         'technician',
         'equipment',
+        'equipment.equipmentType',
         'approver',
         'environments',
         'measurements',

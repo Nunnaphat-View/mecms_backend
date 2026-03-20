@@ -41,7 +41,8 @@ export class EquipmentService {
     // If equipment_type_id is being updated, clear the loaded relation
     // to force TypeORM to use the ID column
     if (dto.equipment_type_id !== undefined) {
-      (equipment as any).equipmentType = undefined;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      delete (equipment as any).equipmentType;
     }
 
     Object.assign(equipment, dto);
