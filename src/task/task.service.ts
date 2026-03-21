@@ -11,6 +11,7 @@ import { StandardTool } from '../standard-tool/standard-tool.entity.js';
 import { Environment } from './entities/environment.entity.js';
 import { Measurement } from './entities/measurement.entity.js';
 import { Qualitative } from './entities/qualitative.entity.js';
+import { SpecificParameter } from './entities/specific-parameter.entity.js';
 import { EquipmentService } from '../equipment/equipment.service.js';
 
 @Injectable()
@@ -26,6 +27,8 @@ export class TaskService {
     private readonly measurementRepo: Repository<Measurement>,
     @InjectRepository(Qualitative)
     private readonly qualitativeRepo: Repository<Qualitative>,
+    @InjectRepository(SpecificParameter)
+    private readonly specificParameterRepo: Repository<SpecificParameter>,
     private readonly equipmentService: EquipmentService,
   ) {}
 
@@ -46,6 +49,7 @@ export class TaskService {
         'checklistResults.item',
         'checklistRemarks',
         'checklistRemarks.category',
+        'specificParameters',
       ],
       order: { id: 'DESC' },
     });
@@ -69,6 +73,7 @@ export class TaskService {
         'checklistResults.item',
         'checklistRemarks',
         'checklistRemarks.category',
+        'specificParameters',
       ],
     });
     if (!task) throw new NotFoundException(`Task #${id} not found`);
@@ -105,6 +110,7 @@ export class TaskService {
       await this.environmentRepo.delete({ task_id: id });
       await this.measurementRepo.delete({ task_id: id });
       await this.qualitativeRepo.delete({ task_id: id });
+      await this.specificParameterRepo.delete({ task_id: id });
       console.log('Old data cleared');
 
       // 1. Save Environment - use task object so TypeORM sets the FK correctly
@@ -154,7 +160,22 @@ export class TaskService {
         console.log(`${dto.qualitatives.length} qualitatives saved`);
       }
 
-      // 4. Link Standard Tools
+      // 4. Save Specific Parameters
+      if (dto.specific_parameters && dto.specific_parameters.length > 0) {
+        for (const sp of dto.specific_parameters) {
+          const specificParam = new SpecificParameter();
+          specificParam.name = sp.name;
+          specificParam.value = sp.value ?? null;
+          specificParam.unit = sp.unit ?? null;
+          specificParam.task = task;
+          await this.specificParameterRepo.save(specificParam);
+        }
+        console.log(
+          `${dto.specific_parameters.length} specific parameters saved`,
+        );
+      }
+
+      // 5. Link Standard Tools
       if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
         const standardTools = await this.standardToolRepo.findBy({
           id: In(dto.standard_tool_ids),

@@ -17,6 +17,7 @@ import { Qualitative } from './entities/qualitative.entity.js';
 import { StandardTool } from '../standard-tool/standard-tool.entity.js';
 import { PmChecklistResult } from '../pm-checklist/entities/pm-checklist-result.entity.js';
 import { PmCategoryRemark } from '../pm-checklist/entities/pm-category-remark.entity.js';
+import { SpecificParameter } from './entities/specific-parameter.entity.js';
 
 export type TaskStatus =
   | 'Pending'
@@ -90,6 +91,9 @@ export class Task {
 
   @OneToMany(() => PmCategoryRemark, (remark) => remark.task)
   checklistRemarks: PmCategoryRemark[];
+
+  @OneToMany(() => SpecificParameter, (sp) => sp.task)
+  specificParameters: SpecificParameter[];
 
   @CreateDateColumn()
   createdAt: Date;

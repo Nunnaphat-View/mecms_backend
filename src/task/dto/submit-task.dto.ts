@@ -62,6 +62,21 @@ class MeasurementDto {
   @IsOptional()
   @IsString()
   resolution?: string;
+
+  @ApiProperty({ example: 0.002, required: false })
+  @IsOptional()
+  @IsNumber()
+  ucb1?: number;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsOptional()
+  @IsNumber()
+  ucb2?: number;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsOptional()
+  @IsNumber()
+  ucb3?: number;
 }
 
 class QualitativeDto {
@@ -77,6 +92,22 @@ class QualitativeDto {
   @ApiProperty({ enum: ['PASS', 'FAIL', 'NA'], example: 'PASS' })
   @IsEnum(['PASS', 'FAIL', 'NA'])
   result: 'PASS' | 'FAIL' | 'NA';
+}
+
+class SpecificParameterDto {
+  @ApiProperty({ example: 'IV Set' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 'Covex', required: false })
+  @IsOptional()
+  @IsString()
+  value?: string;
+
+  @ApiProperty({ example: 'Drop/mL', required: false })
+  @IsOptional()
+  @IsString()
+  unit?: string;
 }
 
 export class SubmitTaskDto {
@@ -118,6 +149,16 @@ export class SubmitTaskDto {
   @ValidateNested({ each: true })
   @Type(() => QualitativeDto)
   qualitatives?: QualitativeDto[];
+
+  @ApiProperty({
+    type: [SpecificParameterDto],
+    description: 'รายการตัวแปรเฉพาะของเครื่องมือ',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SpecificParameterDto)
+  specific_parameters?: SpecificParameterDto[];
 
   @ApiProperty({
     enum: ['Pass', 'Fail', 'NA'],

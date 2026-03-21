@@ -45,6 +45,15 @@ export class Measurement {
   @Column({ type: 'varchar', length: 255, nullable: true })
   resolution: string | null;
 
+  @Column({ type: 'float', nullable: true })
+  ucb1: number | null;
+
+  @Column({ type: 'float', nullable: true })
+  ucb2: number | null;
+
+  @Column({ type: 'float', nullable: true })
+  ucb3: number | null;
+
   @ManyToOne(() => Task, (task) => task.measurements, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'task_id' })
   task: Task;
