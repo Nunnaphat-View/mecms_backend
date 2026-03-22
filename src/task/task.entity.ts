@@ -99,7 +99,7 @@ export class Task {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   approvedAt: Date;
 
   @Column({ type: 'varchar', length: 500, nullable: true })

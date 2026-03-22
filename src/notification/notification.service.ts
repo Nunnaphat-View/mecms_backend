@@ -30,7 +30,7 @@ export class NotificationService {
     // Find high-risk equipment due in 7 days
     const dueEquipments = await this.equipmentRepo.find({
       where: {
-        calibration_due_date: Raw((alias) => `DATE(${alias}) = :dateStr`, {
+        calibration_due_date: Raw((alias) => `${alias} = :dateStr`, {
           dateStr,
         }),
         risk_level: 'high',
