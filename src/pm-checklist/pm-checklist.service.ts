@@ -5,10 +5,11 @@ import { ChecklistCategory } from './entities/checklist-category.entity.js';
 import { ChecklistItem } from './entities/checklist-item.entity.js';
 import { PmChecklistResult } from './entities/pm-checklist-result.entity.js';
 import { PmCategoryRemark } from './entities/pm-category-remark.entity.js';
-import { Task } from '../task/task.entity.js';
 import { SavePmFormDto } from './dto/save-pm-form.dto.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { CreateItemDto } from './dto/create-item.dto.js';
+import { Equipment, EquipmentStatus } from '../equipment/equipment.entity.js';
+import { Task, TaskStatus } from '../task/task.entity.js';
 
 @Injectable()
 export class PmChecklistService {
@@ -36,12 +37,14 @@ export class PmChecklistService {
   async savePmForm(
     dto: SavePmFormDto,
   ): Promise<{ success: boolean; task_id: number }> {
-    const task = await this.taskRepo.findOne({ where: { id: dto.task_id } });
-    if (!task) {
-      throw new NotFoundException(`Task #${dto.task_id} not found`);
-    }
-
     await this.dataSource.transaction(async (manager) => {
+      const task = await manager.findOne(Task, {
+        where: { id: dto.task_id },
+      });
+      if (!task) {
+        throw new NotFoundException(`Task #${dto.task_id} not found`);
+      }
+
       // Remove previous results and remarks for idempotency
       await manager.delete(PmChecklistResult, { task_id: dto.task_id });
       await manager.delete(PmCategoryRemark, { task_id: dto.task_id });
@@ -71,13 +74,34 @@ export class PmChecklistService {
       }
 
       // Update the task record
-      await manager.update(Task, dto.task_id, {
-        overall_result: dto.overall_result,
-        status: dto.status,
-        ...(dto.status === 'Done' && dto.path_pdf_pm
-          ? { path_pdf_pm: dto.path_pdf_pm }
-          : {}),
-      });
+      task.overall_result = dto.overall_result;
+      task.status = dto.status as TaskStatus;
+      if (dto.status === 'Done' && dto.path_pdf_pm) {
+        task.path_pdf_pm = dto.path_pdf_pm;
+      }
+      await manager.save(Task, task);
+
+      // Update Equipment status based on inspection result
+      if (task.equipment_id) {
+        const finalEqStatus: EquipmentStatus =
+          dto.overall_result === 'Fail' ? 'repair' : 'calibrating';
+
+        console.log('[PM-SAVE] Task ID:', task.id);
+        console.log('[PM-SAVE] Overall Result:', dto.overall_result);
+        console.log('[PM-SAVE] New Eq Status:', finalEqStatus);
+
+        const equipment = await manager.findOne(Equipment, {
+          where: { id: task.equipment_id },
+        });
+
+        if (equipment) {
+          console.log('[PM-SAVE] Eq ID:', equipment.id);
+          console.log('[PM-SAVE] Old Eq Status:', equipment.status);
+          equipment.status = finalEqStatus;
+          const savedEq = await manager.save(Equipment, equipment);
+          console.log('[PM-SAVE] Updated Eq Status:', savedEq.status);
+        }
+      }
     });
 
     return { success: true, task_id: dto.task_id };

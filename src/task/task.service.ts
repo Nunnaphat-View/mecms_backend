@@ -12,6 +12,7 @@ import { Environment } from './entities/environment.entity.js';
 import { Measurement } from './entities/measurement.entity.js';
 import { Qualitative } from './entities/qualitative.entity.js';
 import { SpecificParameter } from './entities/specific-parameter.entity.js';
+import { Equipment, EquipmentStatus } from '../equipment/equipment.entity.js';
 import { EquipmentService } from '../equipment/equipment.service.js';
 
 @Injectable()
@@ -190,8 +191,9 @@ export class TaskService {
       task.status = 'PendingApproval';
 
       if (task.equipment_id) {
+        const finalEqStatus = task.overall_result === 'Fail' ? 'disabled' : 'calibrating';
         await this.equipmentService.update(task.equipment_id, {
-          status: 'inactive',
+          status: finalEqStatus,
         } as any);
       }
 
@@ -213,16 +215,45 @@ export class TaskService {
       task.remarks = dto.remarks;
 
       if (task.equipment_id) {
-        const finalStatus =
-          task.overall_result === 'Pass' ? 'active' : 'inactive';
-        await this.equipmentService.update(task.equipment_id, {
-          status: finalStatus,
-        } as any);
+        const equipment = await this.equipmentService.findOne(task.equipment_id);
+        if (equipment) {
+          const isPass = task.overall_result === 'Pass';
+          const finalStatus = isPass ? 'ready' : 'disabled';
+          interface EquipmentUpdate {
+            status: EquipmentStatus;
+            calibration_date_last?: string;
+            calibration_due_date?: string;
+          }
+          const updateData: EquipmentUpdate = { status: finalStatus };
+
+          if (isPass) {
+            // Update last calibration date to today
+            const now = new Date();
+            updateData.calibration_date_last = now.toISOString().split('T')[0];
+
+            // Calculate next due date
+            if (equipment.interval) {
+              const nextDate = new Date(now);
+              nextDate.setMonth(nextDate.getMonth() + equipment.interval);
+              updateData.calibration_due_date = nextDate
+                .toISOString()
+                .split('T')[0];
+            }
+          }
+
+          await this.equipmentService.update(task.equipment_id, updateData);
+        }
       }
     } else {
-      task.status = 'Rejected';
+      task.status = 'ReCalibrate';
       task.approver_id = dto.approver_id;
       task.remarks = dto.remarks;
+
+      if (task.equipment_id) {
+        await this.equipmentService.update(task.equipment_id, {
+          status: 'calibrating',
+        } as any);
+      }
     }
 
     return this.taskRepo.save(task);

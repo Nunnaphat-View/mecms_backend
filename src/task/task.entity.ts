@@ -25,6 +25,7 @@ export type TaskStatus =
   | 'PendingApproval'
   | 'Approved'
   | 'Rejected'
+  | 'ReCalibrate'
   | 'Done';
 export type OverallResult = 'Pass' | 'Fail' | 'NA';
 

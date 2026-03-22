@@ -11,7 +11,14 @@ import {
 import { EquipmentType } from './equipment-type.entity.js';
 import { Section } from '../section/entities/section.entity.js';
 
-export type EquipmentStatus = 'active' | 'inactive' | 'maintenance';
+export type EquipmentStatus =
+  | 'ready'
+  | 'calibrating'
+  | 'repair'
+  | 'disabled'
+  | 'active' // Keep for compatibility temporarily
+  | 'inactive' // Keep for compatibility temporarily
+  | 'maintenance'; // Keep for compatibility temporarily
 export type RiskLevel = 'high' | 'medium' | 'low';
 
 @Entity('equipment')
@@ -36,8 +43,16 @@ export class Equipment {
 
   @Column({
     type: 'enum',
-    enum: ['active', 'inactive', 'maintenance'],
-    default: 'active',
+    enum: [
+      'ready',
+      'calibrating',
+      'repair',
+      'disabled',
+      'active',
+      'inactive',
+      'maintenance',
+    ],
+    default: 'ready',
   })
   status: EquipmentStatus;
 

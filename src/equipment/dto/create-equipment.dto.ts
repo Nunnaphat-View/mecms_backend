@@ -36,12 +36,28 @@ export class CreateEquipmentDto {
   model?: string;
 
   @ApiProperty({
-    example: 'active',
-    enum: ['active', 'inactive', 'maintenance'],
+    example: 'ready',
+    enum: [
+      'ready',
+      'calibrating',
+      'repair',
+      'disabled',
+      'active',
+      'inactive',
+      'maintenance',
+    ],
     required: false,
   })
   @IsOptional()
-  @IsEnum(['active', 'inactive', 'maintenance'])
+  @IsEnum([
+    'ready',
+    'calibrating',
+    'repair',
+    'disabled',
+    'active',
+    'inactive',
+    'maintenance',
+  ])
   status?: EquipmentStatus;
 
   @ApiProperty({
