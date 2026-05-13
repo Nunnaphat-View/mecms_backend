@@ -47,6 +47,7 @@ export class TaskService {
     return this.taskRepo.find({
       relations: [
         'technician',
+        'technician.hospital',
         'equipment',
         'equipment.equipmentType',
         'equipment.section',
@@ -71,6 +72,7 @@ export class TaskService {
       where: { id },
       relations: [
         'technician',
+        'technician.hospital',
         'equipment',
         'equipment.equipmentType',
         'equipment.section',

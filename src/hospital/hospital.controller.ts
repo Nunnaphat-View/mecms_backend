@@ -11,7 +11,13 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { HospitalService } from './hospital.service.js';
@@ -50,7 +56,8 @@ export class HospitalController {
       storage: diskStorage({
         destination: './uploads/hospitals',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `hosp-${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
@@ -109,7 +116,8 @@ export class HospitalController {
       storage: diskStorage({
         destination: './uploads/hospitals',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `hosp-${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),

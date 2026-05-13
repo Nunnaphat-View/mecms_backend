@@ -3,19 +3,26 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import * as fs from 'fs';
+import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors();
-  
+
   // Debug logger
-  app.use((req, res, next) => {
-    const fs = require('fs');
-    fs.appendFileSync('submit_debug.log', `[${new Date().toISOString()}] ${req.method} ${req.url}\n`);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    fs.appendFileSync(
+      'submit_debug.log',
+      `[${new Date().toISOString()}] ${req.method} ${req.url}\n`,
+    );
     if (req.method !== 'GET') {
-      fs.appendFileSync('submit_debug.log', `Body: ${JSON.stringify(req.body)}\n`);
+      fs.appendFileSync(
+        'submit_debug.log',
+        `Body: ${JSON.stringify(req.body)}\n`,
+      );
     }
     next();
   });
