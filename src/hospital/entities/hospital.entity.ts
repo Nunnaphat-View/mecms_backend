@@ -16,6 +16,15 @@ export class Hospital {
   @Column({ type: 'text', nullable: true })
   address: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  code: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  logoUrl: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  zipCode: string;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   district: string;
 

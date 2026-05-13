@@ -20,6 +20,21 @@ export class CreateHospitalDto {
   @IsOptional()
   address?: string;
 
+  @ApiProperty({ example: '10000', required: false })
+  @IsString()
+  @IsOptional()
+  code?: string;
+
+  @ApiProperty({ example: 'https://example.com/logo.png', required: false })
+  @IsString()
+  @IsOptional()
+  logoUrl?: string;
+
+  @ApiProperty({ example: '77140', required: false })
+  @IsString()
+  @IsOptional()
+  zipCode?: string;
+
   @ApiProperty({ example: 'บางสะพาน', required: false })
   @IsString()
   @IsOptional()

@@ -7,8 +7,13 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { HospitalService } from './hospital.service.js';
 import { CreateHospitalDto } from './dto/create-hospital.dto.js';
 import { UpdateHospitalDto } from './dto/update-hospital.dto.js';
@@ -20,11 +25,48 @@ export class HospitalController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new hospital' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        address: { type: 'string' },
+        code: { type: 'string' },
+        zipCode: { type: 'string' },
+        district: { type: 'string' },
+        province: { type: 'string' },
+        logo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Hospital logo file',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: diskStorage({
+        destination: './uploads/hospitals',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, `hosp-${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   @ApiResponse({
     status: 201,
     description: 'The hospital has been successfully created.',
   })
-  create(@Body() createHospitalDto: CreateHospitalDto) {
+  create(
+    @Body() createHospitalDto: CreateHospitalDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (file) {
+      createHospitalDto.logoUrl = `/uploads/hospitals/${file.filename}`;
+    }
     return this.hospitalService.create(createHospitalDto);
   }
 
@@ -42,10 +84,45 @@ export class HospitalController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a hospital' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        address: { type: 'string' },
+        code: { type: 'string' },
+        zipCode: { type: 'string' },
+        district: { type: 'string' },
+        province: { type: 'string' },
+        logo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Hospital logo file',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: diskStorage({
+        destination: './uploads/hospitals',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, `hosp-${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateHospitalDto: UpdateHospitalDto,
+    @UploadedFile() file: Express.Multer.File,
   ) {
+    if (file) {
+      updateHospitalDto.logoUrl = `/uploads/hospitals/${file.filename}`;
+    }
     return this.hospitalService.update(id, updateHospitalDto);
   }
 
