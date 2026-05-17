@@ -55,7 +55,6 @@ export class PmChecklistService {
         const currentCertData = task.certificate_data || {};
         currentCertData.technician = {
           name: tech.name,
-          position: tech.position,
           signatureUrl: tech.signatureUrl,
         };
         task.certificate_data = currentCertData;

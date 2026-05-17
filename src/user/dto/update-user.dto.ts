@@ -55,10 +55,7 @@ export class UpdateUserDto {
   @IsString()
   signatureUrl?: string;
 
-  @ApiPropertyOptional({ example: 'ช่างสอบเทียบ', description: 'ตำแหน่ง' })
-  @IsOptional()
-  @IsString()
-  position?: string;
+
 
   @ApiPropertyOptional({
     example: 'U123456789abcdef0123456789abcdef',

@@ -258,7 +258,6 @@ export class TaskService {
         },
         technician: task.technician ? {
           name: task.technician.name || '',
-          position: task.technician.position,
           signatureUrl: task.technician.signatureUrl,
         } : null,
       };
@@ -303,7 +302,6 @@ export class TaskService {
       if (approverFetch) {
         currentCertData.approver = {
           name: approverFetch.name,
-          position: approverFetch.position,
           signatureUrl: approverFetch.signatureUrl,
         };
       }
@@ -312,7 +310,6 @@ export class TaskService {
       if (!currentCertData.technician && task.technician) {
         currentCertData.technician = {
           name: task.technician.name,
-          position: task.technician.position,
           signatureUrl: task.technician.signatureUrl,
         };
       }
