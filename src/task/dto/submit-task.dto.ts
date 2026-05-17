@@ -175,4 +175,14 @@ export class SubmitTaskDto {
   })
   @IsEnum(['Pass', 'Fail', 'NA'])
   overall_result: 'Pass' | 'Fail' | 'NA';
+
+  @ApiProperty({
+    enum: ['InProgress', 'PendingApproval'],
+    example: 'PendingApproval',
+    required: false,
+    description: 'สถานะของ Task (InProgress=ร่าง, PendingApproval=ส่งตรวจ)',
+  })
+  @IsOptional()
+  @IsEnum(['InProgress', 'PendingApproval'])
+  status?: 'InProgress' | 'PendingApproval';
 }

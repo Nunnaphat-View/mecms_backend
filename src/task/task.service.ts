@@ -230,7 +230,7 @@ export class TaskService {
       }
 
       task.overall_result = dto.overall_result;
-      task.status = 'PendingApproval';
+      task.status = dto.status || TaskStatus.PendingApproval;
 
       if (task.equipment_id) {
         const finalEqStatus =

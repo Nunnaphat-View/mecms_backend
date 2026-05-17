@@ -85,7 +85,9 @@ export class PmChecklistService {
 
       // Update the task record
       task.overall_result = dto.overall_result;
-      task.status = dto.status as TaskStatus;
+      // If the tech saves PM checklist, we keep it as InProgress, not Done
+      // Done should only be set when the full calibration is submitted
+      task.status = (dto.status === 'Done' ? 'InProgress' : dto.status) as TaskStatus;
       if (dto.status === 'Done' && dto.path_pdf_pm) {
         task.path_pdf_pm = dto.path_pdf_pm;
       }
