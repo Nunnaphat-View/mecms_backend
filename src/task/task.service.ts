@@ -95,8 +95,23 @@ export class TaskService {
 
   async create(dto: CreateTaskDto): Promise<Task> {
     const year = new Date().getFullYear();
-    const count = await this.taskRepo.count();
-    const pm_no = `PM-${year}-${String(count + 1).padStart(4, '0')}`;
+    
+    // ค้นหา pm_no ล่าสุดของปีนี้
+    const lastTask = await this.taskRepo
+      .createQueryBuilder('task')
+      .where('task.pm_no LIKE :prefix', { prefix: `PM-${year}-%` })
+      .orderBy('task.pm_no', 'DESC')
+      .getOne();
+
+    let nextNumber = 1;
+    if (lastTask && lastTask.pm_no) {
+      const parts = lastTask.pm_no.split('-');
+      if (parts.length === 3) {
+        nextNumber = parseInt(parts[2], 10) + 1;
+      }
+    }
+
+    const pm_no = `PM-${year}-${String(nextNumber).padStart(4, '0')}`;
 
     const task = this.taskRepo.create({
       equipment_id: dto.equipment_id,
@@ -230,7 +245,7 @@ export class TaskService {
       }
 
       task.overall_result = dto.overall_result;
-      task.status = dto.status || TaskStatus.PendingApproval;
+      task.status = dto.status || 'PendingApproval';
 
       if (task.equipment_id) {
         const finalEqStatus =
