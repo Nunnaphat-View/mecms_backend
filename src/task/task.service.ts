@@ -133,7 +133,14 @@ export class TaskService {
       // If TypeORM never loads those arrays, it CANNOT cascade-nullify them later
       const task = await this.taskRepo.findOne({
         where: { id },
-        relations: ['equipment', 'standardTools', 'technician'],
+        relations: [
+          'equipment', 
+          'equipment.section', 
+          'equipment.section.hospital', 
+          'standardTools', 
+          'technician',
+          'technician.hospital'
+        ],
       });
       if (!task) throw new NotFoundException(`Task #${id} not found`);
       console.log(`Task found: id=${task.id}`);
@@ -235,14 +242,26 @@ export class TaskService {
         }
       }
 
-      // Freeze technician info
-      if (task.technician) {
-        const tech = task.technician;
-        task.technician_name = tech.name || '';
-        task.technician_position = tech.position;
-        task.technician_signature_url = tech.signatureUrl;
-        console.log(`[DEBUG] Frozen Tech: ${task.technician_name}, ${task.technician_position}`);
-      }
+      // Create unified snapshot in JSONB
+      const targetHospital = task.technician?.hospital || task.equipment?.section?.hospital;
+      task.certificate_data = {
+        hospital: targetHospital ? {
+          name: targetHospital.name,
+          logoUrl: targetHospital.logoUrl,
+          address: targetHospital.address,
+          district: targetHospital.district,
+          province: targetHospital.province,
+          zipCode: targetHospital.zipCode,
+        } : null,
+        department: {
+          name: task.equipment?.section?.name || null
+        },
+        technician: task.technician ? {
+          name: task.technician.name || '',
+          position: task.technician.position,
+          signatureUrl: task.technician.signatureUrl,
+        } : null,
+      };
 
       task.overall_result = dto.overall_result;
       task.status = dto.status || 'PendingApproval';
@@ -274,25 +293,48 @@ export class TaskService {
       task.approvedAt = new Date();
       task.remarks = dto.remarks;
 
-      // Freeze approver info
+      // Freeze approver info into certificate_data
       const approverFetch = await this.userRepo.findOne({
         where: { id: dto.approver_id },
       });
+      
+      const currentCertData = task.certificate_data || {};
+      
       if (approverFetch) {
-        task.approver_name = approverFetch.name;
-        task.approver_position = approverFetch.position;
-        task.approver_signature_url = approverFetch.signatureUrl;
-        console.log(`[DEBUG] Frozen Appr: ${task.approver_name}, ${task.approver_position}`);
+        currentCertData.approver = {
+          name: approverFetch.name,
+          position: approverFetch.position,
+          signatureUrl: approverFetch.signatureUrl,
+        };
       }
 
-      // Safety: also freeze technician info if missing (for legacy tasks being approved now)
-      if (!task.technician_name && task.technician) {
-        const tech = task.technician;
-        task.technician_name = tech.name;
-        task.technician_position = tech.position;
-        task.technician_signature_url = tech.signatureUrl;
-        console.log(`[DEBUG] Frozen Tech on Approval: ${task.technician_name}`);
+      // Safety: also freeze technician and hospital info if missing (for legacy tasks being approved now)
+      if (!currentCertData.technician && task.technician) {
+        currentCertData.technician = {
+          name: task.technician.name,
+          position: task.technician.position,
+          signatureUrl: task.technician.signatureUrl,
+        };
       }
+
+      if (!currentCertData.hospital) {
+        const targetHospital = task.technician?.hospital || task.equipment?.section?.hospital;
+        if (targetHospital) {
+          currentCertData.hospital = {
+            name: targetHospital.name,
+            logoUrl: targetHospital.logoUrl,
+            address: targetHospital.address,
+            district: targetHospital.district,
+            province: targetHospital.province,
+            zipCode: targetHospital.zipCode,
+          };
+        }
+        if (task.equipment?.section) {
+          currentCertData.department = { name: task.equipment.section.name };
+        }
+      }
+      
+      task.certificate_data = currentCertData;
 
       if (task.equipment_id) {
         const equipment = await this.equipmentService.findOne(

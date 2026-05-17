@@ -105,21 +105,7 @@ export class Task {
   @Column({ type: 'varchar', length: 500, nullable: true })
   path_pdf_cer: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  technician_name: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  technician_position: string;
-
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  technician_signature_url: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  approver_name: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  approver_position: string;
-
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  approver_signature_url: string;
+  // Unified JSONB Snapshot for Certificates
+  @Column({ type: 'jsonb', nullable: true })
+  certificate_data: any;
 }
