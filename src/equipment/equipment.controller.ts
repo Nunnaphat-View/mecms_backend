@@ -43,7 +43,7 @@ export class EquipmentController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'ดูรายการเครื่องมือทั้งหมด' })
+  @ApiOperation({ summary: 'ดูรายการเครื่องมือแพทย์ทั้งหมด' })
   @ApiResponse({ status: 200, description: 'คืนค่า Array of Equipment' })
   findAll() {
     return this.equipmentService.findAll();
