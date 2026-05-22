@@ -30,7 +30,6 @@ export class User {
   @Column({ type: 'varchar', length: 50, nullable: true })
   tel: string;
 
-
   @Column({ type: 'varchar', length: 500, nullable: true })
   signatureUrl: string;
 

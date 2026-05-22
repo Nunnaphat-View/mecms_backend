@@ -55,8 +55,6 @@ export class UpdateUserDto {
   @IsString()
   signatureUrl?: string;
 
-
-
   @ApiPropertyOptional({
     example: 'U123456789abcdef0123456789abcdef',
     description: 'LINE User ID',
