@@ -60,4 +60,10 @@ export class StandardToolService {
     const tool = await this.findOne(id);
     await this.standardToolRepo.remove(tool);
   }
+
+  async updatePdfPath(id: number, pathPdf: string): Promise<StandardTool> {
+    const tool = await this.findOne(id);
+    tool.path_pdf = pathPdf;
+    return this.standardToolRepo.save(tool);
+  }
 }

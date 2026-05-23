@@ -8,7 +8,12 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { StorageService } from '../storage/storage.service.js';
 import {
   ApiTags,
   ApiOperation,
@@ -25,7 +30,10 @@ import { UpdateStandardToolDto } from './dto/update-standard-tool.dto.js';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class StandardToolController {
-  constructor(private readonly standardToolService: StandardToolService) {}
+  constructor(
+    private readonly standardToolService: StandardToolService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'รายการเครื่องมือมาตรฐานทั้งหมด' })
@@ -73,5 +81,23 @@ export class StandardToolController {
   @ApiResponse({ status: 200, description: 'ลบสำเร็จ' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.standardToolService.remove(id);
+  }
+
+  @Post(':id/upload-pdf')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  @ApiOperation({ summary: 'อัปโหลดไฟล์ PDF ใบรับรองเครื่องมือมาตรฐาน' })
+  async uploadPdf(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const fileUrl = await this.storageService.uploadFile(
+      file,
+      'standard-tools',
+    );
+    return this.standardToolService.updatePdfPath(id, fileUrl);
   }
 }

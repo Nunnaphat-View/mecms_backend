@@ -68,7 +68,10 @@ export class HospitalController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (file) {
-      createHospitalDto.logoUrl = await this.storageService.uploadFile(file, 'hospitals');
+      createHospitalDto.logoUrl = await this.storageService.uploadFile(
+        file,
+        'hospitals',
+      );
     }
     return this.hospitalService.create(createHospitalDto);
   }
@@ -123,10 +126,13 @@ export class HospitalController {
         if (existing && existing.logoUrl) {
           await this.storageService.deleteFile(existing.logoUrl);
         }
-      } catch (err) {
+      } catch {
         // Ignore if delete fails
       }
-      updateHospitalDto.logoUrl = await this.storageService.uploadFile(file, 'hospitals');
+      updateHospitalDto.logoUrl = await this.storageService.uploadFile(
+        file,
+        'hospitals',
+      );
     }
     return this.hospitalService.update(id, updateHospitalDto);
   }

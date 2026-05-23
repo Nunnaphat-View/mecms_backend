@@ -27,8 +27,6 @@ interface RequestWithUser {
   user: { userId: number; username: string };
 }
 
-
-
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -61,7 +59,10 @@ export class AuthController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (file) {
-      registerDto.imageUrl = await this.storageService.uploadFile(file, 'profiles');
+      registerDto.imageUrl = await this.storageService.uploadFile(
+        file,
+        'profiles',
+      );
     }
     return this.authService.register(registerDto);
   }

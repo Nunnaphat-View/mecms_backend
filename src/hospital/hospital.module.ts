@@ -6,10 +6,7 @@ import { HospitalService } from './hospital.service.js';
 import { StorageModule } from '../storage/storage.module.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Hospital]),
-    StorageModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Hospital]), StorageModule],
   controllers: [HospitalController],
   providers: [HospitalService],
   exports: [HospitalService],
