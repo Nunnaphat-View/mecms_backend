@@ -38,6 +38,7 @@ export class CalibrationSettingService {
     for (const dto of dtos) {
       const entity = this.repository.create({
         ...dto,
+        parameter_name: dto.parameter_name ?? null,
         equipment_name: equipmentName,
       });
 

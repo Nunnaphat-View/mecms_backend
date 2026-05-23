@@ -26,8 +26,8 @@ export class CalibrationSetting {
   @Column({ type: 'enum', enum: ['quantitative', 'qualitative'], default: 'quantitative' })
   type: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  parameter_name: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  parameter_name: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   unit: string;

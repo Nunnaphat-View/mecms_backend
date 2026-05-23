@@ -169,7 +169,7 @@ export class TaskService {
       if (dto.measurements && dto.measurements.length > 0) {
         for (const m of dto.measurements) {
           const measurement = new Measurement();
-          measurement.parameter_name = m.parameter_name;
+          measurement.parameter_name = m.parameter_name ?? null;
           measurement.result = m.result;
           measurement.display_type = m.display_type ?? null;
           measurement.resolution = m.resolution ?? null;

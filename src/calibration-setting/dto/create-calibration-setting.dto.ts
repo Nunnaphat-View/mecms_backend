@@ -13,10 +13,10 @@ export class CreateCalibrationSettingDto {
   @IsEnum(['quantitative', 'qualitative'])
   type: 'quantitative' | 'qualitative';
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  parameter_name: string;
+  @IsOptional()
+  parameter_name?: string;
 
   @ApiProperty()
   @IsString()

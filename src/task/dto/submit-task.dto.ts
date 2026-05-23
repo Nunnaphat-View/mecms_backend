@@ -10,9 +10,10 @@ import {
 import { Type } from 'class-transformer';
 
 class MeasurementDto {
-  @ApiProperty({ example: 'NIBP - Systolic' })
+  @ApiProperty({ example: 'NIBP - Systolic', required: false })
+  @IsOptional()
   @IsString()
-  parameter_name: string;
+  parameter_name?: string;
 
   @ApiProperty({ example: 120, required: false })
   @IsOptional()

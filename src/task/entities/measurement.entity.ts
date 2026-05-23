@@ -12,8 +12,8 @@ export class Measurement {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
-  parameter_name: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  parameter_name: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
   data: any;
