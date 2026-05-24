@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -20,6 +22,8 @@ import { PmChecklistService } from './pm-checklist.service.js';
 import { SavePmFormDto } from './dto/save-pm-form.dto.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { CreateItemDto } from './dto/create-item.dto.js';
+import { UpdateCategoryDto } from './dto/update-category.dto.js';
+import { UpdateItemDto } from './dto/update-item.dto.js';
 
 @ApiTags('PM Checklist')
 @Controller()
@@ -70,6 +74,31 @@ export class PmChecklistController {
     return this.pmChecklistService.createCategory(dto);
   }
 
+  @Patch('checklist-categories/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'แก้ไขหมวดหมู่' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Category ที่แก้ไขสำเร็จ' })
+  @ApiResponse({ status: 404, description: 'ไม่พบหมวดหมู่ที่ระบุ' })
+  updateCategory(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCategoryDto,
+  ) {
+    return this.pmChecklistService.updateCategory(id, dto);
+  }
+
+  @Delete('checklist-categories/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'ลบหมวดหมู่' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'ลบสำเร็จ' })
+  @ApiResponse({ status: 404, description: 'ไม่พบหมวดหมู่ที่ระบุ' })
+  deleteCategory(@Param('id', ParseIntPipe) id: number) {
+    return this.pmChecklistService.deleteCategory(id);
+  }
+
   // ── Item ──────────────────────────────────────────────────────────────
 
   @Get('checklist-items')
@@ -88,5 +117,30 @@ export class PmChecklistController {
   @ApiResponse({ status: 404, description: 'ไม่พบหมวดหมู่ที่ระบุ' })
   createItem(@Body() dto: CreateItemDto) {
     return this.pmChecklistService.createItem(dto);
+  }
+
+  @Patch('checklist-items/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'แก้ไขรายการตรวจ' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Item ที่แก้ไขสำเร็จ' })
+  @ApiResponse({ status: 404, description: 'ไม่พบรายการตรวจที่ระบุ' })
+  updateItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateItemDto,
+  ) {
+    return this.pmChecklistService.updateItem(id, dto);
+  }
+
+  @Delete('checklist-items/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'ลบรายการตรวจ' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'ลบสำเร็จ' })
+  @ApiResponse({ status: 404, description: 'ไม่พบรายการตรวจที่ระบุ' })
+  deleteItem(@Param('id', ParseIntPipe) id: number) {
+    return this.pmChecklistService.deleteItem(id);
   }
 }

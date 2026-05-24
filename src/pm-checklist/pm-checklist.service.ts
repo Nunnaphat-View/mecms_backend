@@ -1,6 +1,3 @@
-/* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -11,6 +8,8 @@ import { PmCategoryRemark } from './entities/pm-category-remark.entity.js';
 import { SavePmFormDto } from './dto/save-pm-form.dto.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { CreateItemDto } from './dto/create-item.dto.js';
+import { UpdateCategoryDto } from './dto/update-category.dto.js';
+import { UpdateItemDto } from './dto/update-item.dto.js';
 import { Equipment, EquipmentStatus } from '../equipment/equipment.entity.js';
 import { Task, TaskStatus } from '../task/task.entity.js';
 
@@ -49,6 +48,13 @@ export class PmChecklistService {
         throw new NotFoundException(`Task #${dto.task_id} not found`);
       }
 
+      // Fetch current checklist items for snapshotting
+      const dbItems = await manager.find(ChecklistItem);
+      const itemMap = new Map<number, ChecklistItem>();
+      for (const item of dbItems) {
+        itemMap.set(item.id, item);
+      }
+
       // Freeze technician info if not already frozen or on every re-save
       if (task.technician) {
         const tech = task.technician;
@@ -74,6 +80,22 @@ export class PmChecklistService {
         }),
       );
       await manager.save(PmChecklistResult, results);
+
+      // Create PM checklist snapshot inside task.certificate_data.pmChecklist
+      const snapshot = dto.results.map((r) => {
+        const dbItem = itemMap.get(r.item_id);
+        return {
+          item_id: r.item_id,
+          description: dbItem ? dbItem.description : '',
+          category_id: dbItem ? dbItem.category_id : 0,
+          display_order: dbItem ? dbItem.display_order : 0,
+          status: r.status,
+        };
+      });
+
+      const currentCertData = task.certificate_data || {};
+      currentCertData.pmChecklist = snapshot;
+      task.certificate_data = currentCertData;
 
       // Insert remarks (skip empty text)
       const remarks = dto.remarks
@@ -139,6 +161,24 @@ export class PmChecklistService {
     return this.categoryRepo.save(category);
   }
 
+  async updateCategory(id: number, dto: UpdateCategoryDto): Promise<ChecklistCategory> {
+    const category = await this.categoryRepo.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Category #${id} not found`);
+    }
+    Object.assign(category, dto);
+    return this.categoryRepo.save(category);
+  }
+
+  async deleteCategory(id: number): Promise<{ success: boolean }> {
+    const category = await this.categoryRepo.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Category #${id} not found`);
+    }
+    await this.categoryRepo.remove(category);
+    return { success: true };
+  }
+
   getItems(categoryId?: number): Promise<ChecklistItem[]> {
     return this.itemRepo.find({
       where: categoryId ? { category_id: categoryId } : undefined,
@@ -159,5 +199,29 @@ export class PmChecklistService {
       display_order: dto.display_order ?? 0,
     });
     return this.itemRepo.save(item);
+  }
+
+  async updateItem(id: number, dto: UpdateItemDto): Promise<ChecklistItem> {
+    const item = await this.itemRepo.findOne({ where: { id } });
+    if (!item) {
+      throw new NotFoundException(`ChecklistItem #${id} not found`);
+    }
+    if (dto.category_id !== undefined) {
+      const category = await this.categoryRepo.findOne({ where: { id: dto.category_id } });
+      if (!category) {
+        throw new NotFoundException(`Category #${dto.category_id} not found`);
+      }
+    }
+    Object.assign(item, dto);
+    return this.itemRepo.save(item);
+  }
+
+  async deleteItem(id: number): Promise<{ success: boolean }> {
+    const item = await this.itemRepo.findOne({ where: { id } });
+    if (!item) {
+      throw new NotFoundException(`ChecklistItem #${id} not found`);
+    }
+    await this.itemRepo.remove(item);
+    return { success: true };
   }
 }
