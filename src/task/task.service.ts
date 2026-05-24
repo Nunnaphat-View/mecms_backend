@@ -237,9 +237,11 @@ export class TaskService {
         }
       }
 
-      // Create unified snapshot in JSONB
+      // Create unified snapshot in JSONB while preserving existing fields (like pmChecklist)
       const targetHospital = task.technician?.hospital || task.equipment?.section?.hospital;
+      const currentCertData = task.certificate_data || {};
       task.certificate_data = {
+        ...currentCertData,
         hospital: targetHospital ? {
           name: targetHospital.name,
           logoUrl: targetHospital.logoUrl,
@@ -292,7 +294,7 @@ export class TaskService {
         where: { id: dto.approver_id },
       });
       
-      const currentCertData = task.certificate_data || {};
+      const currentCertData = { ...(task.certificate_data || {}) };
       
       if (approverFetch) {
         currentCertData.approver = {

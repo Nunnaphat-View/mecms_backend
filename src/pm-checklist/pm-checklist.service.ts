@@ -1,3 +1,5 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -58,12 +60,13 @@ export class PmChecklistService {
       // Freeze technician info if not already frozen or on every re-save
       if (task.technician) {
         const tech = task.technician;
-        const currentCertData = task.certificate_data || {};
-        currentCertData.technician = {
-          name: tech.name,
-          signatureUrl: tech.signatureUrl,
+        task.certificate_data = {
+          ...task.certificate_data,
+          technician: {
+            name: tech.name,
+            signatureUrl: tech.signatureUrl,
+          },
         };
-        task.certificate_data = currentCertData;
         console.log(`[DEBUG-PM] Frozen Tech: ${tech.name}`);
       }
 
@@ -93,9 +96,10 @@ export class PmChecklistService {
         };
       });
 
-      const currentCertData = task.certificate_data || {};
-      currentCertData.pmChecklist = snapshot;
-      task.certificate_data = currentCertData;
+      task.certificate_data = {
+        ...task.certificate_data,
+        pmChecklist: snapshot,
+      };
 
       // Insert remarks (skip empty text)
       const remarks = dto.remarks
