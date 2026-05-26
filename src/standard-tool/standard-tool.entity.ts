@@ -26,6 +26,9 @@ export class StandardTool {
   path_pdf: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
+  path_image: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
   certificate_number: string;
 
   @Column({ type: 'date', nullable: true })

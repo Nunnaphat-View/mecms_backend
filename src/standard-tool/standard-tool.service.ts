@@ -66,4 +66,10 @@ export class StandardToolService {
     tool.path_pdf = pathPdf;
     return this.standardToolRepo.save(tool);
   }
+
+  async updateImagePath(id: number, pathImage: string): Promise<StandardTool> {
+    const tool = await this.findOne(id);
+    tool.path_image = pathImage;
+    return this.standardToolRepo.save(tool);
+  }
 }

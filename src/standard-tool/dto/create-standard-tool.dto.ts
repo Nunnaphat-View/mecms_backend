@@ -54,6 +54,15 @@ export class CreateStandardToolDto {
   path_pdf?: string;
 
   @ApiProperty({
+    example: '/uploads/standard-tools/img.jpg',
+    required: false,
+    description: 'พาธไฟล์รูปภาพเครื่องมือมาตรฐาน',
+  })
+  @IsOptional()
+  @IsString()
+  path_image?: string;
+
+  @ApiProperty({
     example: 'CERT-2024-001',
     required: false,
     description: 'เลขที่ใบรับรอง',

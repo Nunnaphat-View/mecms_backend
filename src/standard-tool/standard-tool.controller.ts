@@ -100,4 +100,22 @@ export class StandardToolController {
     );
     return this.standardToolService.updatePdfPath(id, fileUrl);
   }
+
+  @Post(':id/upload-image')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  @ApiOperation({ summary: 'อัปโหลดไฟล์รูปภาพเครื่องมือมาตรฐาน' })
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const fileUrl = await this.storageService.uploadFile(
+      file,
+      'standard-tools',
+    );
+    return this.standardToolService.updateImagePath(id, fileUrl);
+  }
 }
