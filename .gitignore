@@ -74,5 +74,6 @@ backup.sql
 submit_debug.log
 *.sql
 
-.agent/
+*.agent/
+
 openspec/
