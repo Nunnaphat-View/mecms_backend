@@ -74,6 +74,11 @@ backup.sql
 submit_debug.log
 *.sql
 
+*.agents/
 *.agent/
-
 openspec/
+
+# BMad Method — reinstall: npx bmad-method install
+_bmad/
+_bmad-output/
+.agents/skills/bmad-*/
