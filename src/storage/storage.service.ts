@@ -2,13 +2,13 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { 
-  S3Client, 
-  PutObjectCommand, 
-  DeleteObjectCommand, 
-  HeadBucketCommand, 
-  CreateBucketCommand, 
-  PutBucketPolicyCommand 
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
+  PutBucketPolicyCommand,
 } from '@aws-sdk/client-s3';
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -18,13 +18,20 @@ export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
 
   constructor(private readonly configService: ConfigService) {
-    const s3Endpoint = this.configService.get<string>('S3_ENDPOINT') || 'http://localhost:9002';
-    const accessKey = this.configService.get<string>('S3_ACCESS_KEY') || 'minioadmin';
-    const secretKey = this.configService.get<string>('S3_SECRET_KEY') || 'minioadminpassword';
-    this.bucketName = this.configService.get<string>('S3_BUCKET_NAME') || 'calibration';
+    const s3Endpoint =
+      this.configService.get<string>('S3_ENDPOINT') || 'http://localhost:9002';
+    const accessKey =
+      this.configService.get<string>('S3_ACCESS_KEY') || 'minioadmin';
+    const secretKey =
+      this.configService.get<string>('S3_SECRET_KEY') || 'minioadminpassword';
+    this.bucketName =
+      this.configService.get<string>('S3_BUCKET_NAME') || 'calibration';
     const region = this.configService.get<string>('S3_REGION') || 'us-east-1';
-    const forcePathStyleVal = this.configService.get<string>('S3_FORCE_PATH_STYLE');
-    const forcePathStyle = forcePathStyleVal === 'true' || forcePathStyleVal === undefined;
+    const forcePathStyleVal = this.configService.get<string>(
+      'S3_FORCE_PATH_STYLE',
+    );
+    const forcePathStyle =
+      forcePathStyleVal === 'true' || forcePathStyleVal === undefined;
 
     this.endpoint = s3Endpoint;
 
@@ -45,20 +52,31 @@ export class StorageService implements OnModuleInit {
     try {
       await this.ensureBucketExistsAndIsPublic();
     } catch (error) {
-      this.logger.error(`Failed to initialize S3/MinIO bucket policy: ${error.message}`);
+      this.logger.error(
+        `Failed to initialize S3/MinIO bucket policy: ${error.message}`,
+      );
     }
   }
 
   private async ensureBucketExistsAndIsPublic() {
     try {
       // Check if bucket exists
-      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucketName }));
+      await this.s3Client.send(
+        new HeadBucketCommand({ Bucket: this.bucketName }),
+      );
       this.logger.log(`Bucket "${this.bucketName}" already exists.`);
     } catch (error: any) {
       // If bucket does not exist, create it
-      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
-        this.logger.log(`Bucket "${this.bucketName}" not found. Creating it...`);
-        await this.s3Client.send(new CreateBucketCommand({ Bucket: this.bucketName }));
+      if (
+        error.name === 'NotFound' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
+        this.logger.log(
+          `Bucket "${this.bucketName}" not found. Creating it...`,
+        );
+        await this.s3Client.send(
+          new CreateBucketCommand({ Bucket: this.bucketName }),
+        );
         this.logger.log(`Bucket "${this.bucketName}" created successfully.`);
       } else {
         throw error;
@@ -86,9 +104,13 @@ export class StorageService implements OnModuleInit {
           Policy: JSON.stringify(policy),
         }),
       );
-      this.logger.log(`Bucket "${this.bucketName}" policy set to Public Read automatically.`);
+      this.logger.log(
+        `Bucket "${this.bucketName}" policy set to Public Read automatically.`,
+      );
     } catch (error: any) {
-      this.logger.warn(`Could not set bucket policy to public automatically: ${error.message}`);
+      this.logger.warn(
+        `Could not set bucket policy to public automatically: ${error.message}`,
+      );
     }
   }
 

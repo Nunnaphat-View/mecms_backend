@@ -1,5 +1,12 @@
 /* eslint-disable prettier/prettier */
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsInt, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsInt,
+  IsArray,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ICalibrationTestValue } from '../calibration-setting.entity';
 

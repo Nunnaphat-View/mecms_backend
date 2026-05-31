@@ -119,7 +119,9 @@ export class PmChecklistService {
       task.overall_result = dto.overall_result;
       // If the tech saves PM checklist, we keep it as InProgress, not Done
       // Done should only be set when the full calibration is submitted
-      task.status = (dto.status === 'Done' ? 'InProgress' : dto.status) as TaskStatus;
+      task.status = (
+        dto.status === 'Done' ? 'InProgress' : dto.status
+      ) as TaskStatus;
       if (dto.status === 'Done' && dto.path_pdf_pm) {
         task.path_pdf_pm = dto.path_pdf_pm;
       }
@@ -165,7 +167,10 @@ export class PmChecklistService {
     return this.categoryRepo.save(category);
   }
 
-  async updateCategory(id: number, dto: UpdateCategoryDto): Promise<ChecklistCategory> {
+  async updateCategory(
+    id: number,
+    dto: UpdateCategoryDto,
+  ): Promise<ChecklistCategory> {
     const category = await this.categoryRepo.findOne({ where: { id } });
     if (!category) {
       throw new NotFoundException(`Category #${id} not found`);
@@ -211,7 +216,9 @@ export class PmChecklistService {
       throw new NotFoundException(`ChecklistItem #${id} not found`);
     }
     if (dto.category_id !== undefined) {
-      const category = await this.categoryRepo.findOne({ where: { id: dto.category_id } });
+      const category = await this.categoryRepo.findOne({
+        where: { id: dto.category_id },
+      });
       if (!category) {
         throw new NotFoundException(`Category #${dto.category_id} not found`);
       }

@@ -1,5 +1,13 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { CalibrationSettingService } from './calibration-setting.service';
 import { CreateCalibrationSettingDto } from './dto/create-calibration-setting.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -24,7 +32,9 @@ export class CalibrationSettingController {
   }
 
   @Post('batch/:equipmentName')
-  @ApiOperation({ summary: 'Save batch of calibration settings for an equipment' })
+  @ApiOperation({
+    summary: 'Save batch of calibration settings for an equipment',
+  })
   batchSave(
     @Param('equipmentName') equipmentName: string,
     @Body() dtos: CreateCalibrationSettingDto[],

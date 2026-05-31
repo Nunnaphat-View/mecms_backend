@@ -8,7 +8,9 @@ import { CalibrationSettingController } from './calibration-setting.controller';
 import { StandardToolCategory } from '../standard-tool/standard-tool-category.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CalibrationSetting, StandardToolCategory])],
+  imports: [
+    TypeOrmModule.forFeature([CalibrationSetting, StandardToolCategory]),
+  ],
   providers: [CalibrationSettingService],
   controllers: [CalibrationSettingController],
   exports: [CalibrationSettingService],

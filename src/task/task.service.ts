@@ -5,7 +5,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Task } from './task.entity.js';
@@ -95,7 +99,7 @@ export class TaskService {
 
   async create(dto: CreateTaskDto): Promise<Task> {
     const year = new Date().getFullYear();
-    
+
     // ค้นหา pm_no ล่าสุดของปีนี้
     const lastTask = await this.taskRepo
       .createQueryBuilder('task')
@@ -126,7 +130,10 @@ export class TaskService {
 
   async submitTask(id: number, dto: SubmitTaskDto): Promise<Task> {
     const fs = require('fs');
-    fs.appendFileSync('submit_debug.log', `\n[${new Date().toISOString()}] Task ${id} DTO: ${JSON.stringify(dto)}\n`);
+    fs.appendFileSync(
+      'submit_debug.log',
+      `\n[${new Date().toISOString()}] Task ${id} DTO: ${JSON.stringify(dto)}\n`,
+    );
     console.log(`=== Submitting task ${id} ===`);
     try {
       // Load task WITHOUT the child relations (environments/measurements/qualitatives)
@@ -134,12 +141,12 @@ export class TaskService {
       const task = await this.taskRepo.findOne({
         where: { id },
         relations: [
-          'equipment', 
-          'equipment.section', 
-          'equipment.section.hospital', 
-          'standardTools', 
+          'equipment',
+          'equipment.section',
+          'equipment.section.hospital',
+          'standardTools',
           'technician',
-          'technician.hospital'
+          'technician.hospital',
         ],
       });
       if (!task) throw new NotFoundException(`Task #${id} not found`);
@@ -226,7 +233,10 @@ export class TaskService {
 
       // 5. Link Standard Tools
       if (dto.standard_tool_ids) {
-        console.log(`Explicitly linking tools for task ${id}:`, dto.standard_tool_ids);
+        console.log(
+          `Explicitly linking tools for task ${id}:`,
+          dto.standard_tool_ids,
+        );
         if (dto.standard_tool_ids.length > 0) {
           const tools = await this.standardToolRepo.find({
             where: { id: In(dto.standard_tool_ids) },
@@ -238,25 +248,30 @@ export class TaskService {
       }
 
       // Create unified snapshot in JSONB while preserving existing fields (like pmChecklist)
-      const targetHospital = task.technician?.hospital || task.equipment?.section?.hospital;
+      const targetHospital =
+        task.technician?.hospital || task.equipment?.section?.hospital;
       const currentCertData = task.certificate_data || {};
       task.certificate_data = {
         ...currentCertData,
-        hospital: targetHospital ? {
-          name: targetHospital.name,
-          logoUrl: targetHospital.logoUrl,
-          address: targetHospital.address,
-          district: targetHospital.district,
-          province: targetHospital.province,
-          zipCode: targetHospital.zipCode,
-        } : null,
+        hospital: targetHospital
+          ? {
+              name: targetHospital.name,
+              logoUrl: targetHospital.logoUrl,
+              address: targetHospital.address,
+              district: targetHospital.district,
+              province: targetHospital.province,
+              zipCode: targetHospital.zipCode,
+            }
+          : null,
         department: {
-          name: task.equipment?.section?.name || null
+          name: task.equipment?.section?.name || null,
         },
-        technician: task.technician ? {
-          name: task.technician.name || '',
-          signatureUrl: task.technician.signatureUrl,
-        } : null,
+        technician: task.technician
+          ? {
+              name: task.technician.name || '',
+              signatureUrl: task.technician.signatureUrl,
+            }
+          : null,
       };
 
       task.overall_result = dto.overall_result;
@@ -293,9 +308,9 @@ export class TaskService {
       const approverFetch = await this.userRepo.findOne({
         where: { id: dto.approver_id },
       });
-      
+
       const currentCertData = { ...(task.certificate_data || {}) };
-      
+
       if (approverFetch) {
         currentCertData.approver = {
           name: approverFetch.name,
@@ -312,7 +327,8 @@ export class TaskService {
       }
 
       if (!currentCertData.hospital) {
-        const targetHospital = task.technician?.hospital || task.equipment?.section?.hospital;
+        const targetHospital =
+          task.technician?.hospital || task.equipment?.section?.hospital;
         if (targetHospital) {
           currentCertData.hospital = {
             name: targetHospital.name,
@@ -327,7 +343,7 @@ export class TaskService {
           currentCertData.department = { name: task.equipment.section.name };
         }
       }
-      
+
       task.certificate_data = currentCertData;
 
       if (task.equipment_id) {

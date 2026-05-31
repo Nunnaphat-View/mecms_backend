@@ -1,5 +1,11 @@
 /* eslint-disable prettier/prettier */
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { StandardToolCategory } from './standard-tool-category.entity';
 
 @Entity('standard_tools')
@@ -40,7 +46,9 @@ export class StandardTool {
   @Column({ type: 'int', nullable: true })
   category_id: number;
 
-  @ManyToOne(() => StandardToolCategory, (category) => category.tools, { nullable: true })
+  @ManyToOne(() => StandardToolCategory, (category) => category.tools, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'category_id' })
   category: StandardToolCategory;
 }

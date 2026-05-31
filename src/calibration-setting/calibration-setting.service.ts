@@ -31,14 +31,17 @@ export class CalibrationSettingService {
   }
 
   async batchSave(equipmentName: string, dtos: CreateCalibrationSettingDto[]) {
-    console.log(`Saving batch settings for ${equipmentName}:`, JSON.stringify(dtos, null, 2));
-    
+    console.log(
+      `Saving batch settings for ${equipmentName}:`,
+      JSON.stringify(dtos, null, 2),
+    );
+
     // 1. Delete existing settings for this equipment
     await this.repository.delete({ equipment_name: equipmentName });
 
     // 2. Save new settings
     const savedEntities: CalibrationSetting[] = [];
-    
+
     for (const dto of dtos) {
       const entity = this.repository.create({
         ...dto,
@@ -48,7 +51,7 @@ export class CalibrationSettingService {
 
       if (dto.category_ids && dto.category_ids.length > 0) {
         entity.categories = await this.categoryRepo.find({
-          where: { id: In(dto.category_ids) }
+          where: { id: In(dto.category_ids) },
         });
       } else {
         entity.categories = [];

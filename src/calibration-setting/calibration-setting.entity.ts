@@ -23,7 +23,11 @@ export class CalibrationSetting {
   @Column({ type: 'varchar', length: 255 })
   equipment_name: string;
 
-  @Column({ type: 'enum', enum: ['quantitative', 'qualitative'], default: 'quantitative' })
+  @Column({
+    type: 'enum',
+    enum: ['quantitative', 'qualitative'],
+    default: 'quantitative',
+  })
   type: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

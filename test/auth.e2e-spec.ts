@@ -25,7 +25,7 @@ describe('AuthController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Enable validation pipe to match main application setup
     app.useGlobalPipes(
       new ValidationPipe({
@@ -36,7 +36,9 @@ describe('AuthController (e2e)', () => {
 
     await app.init();
 
-    userRepository = moduleFixture.get<Repository<User>>(getRepositoryToken(User));
+    userRepository = moduleFixture.get<Repository<User>>(
+      getRepositoryToken(User),
+    );
   });
 
   afterAll(async () => {
@@ -142,9 +144,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should fail with 401 Unauthorized if no token provided', async () => {
-      await request(app.getHttpServer())
-        .get('/auth/profile')
-        .expect(401);
+      await request(app.getHttpServer()).get('/auth/profile').expect(401);
     });
 
     it('should fail with 401 Unauthorized if invalid token provided', async () => {

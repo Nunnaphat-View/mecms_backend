@@ -17,16 +17,16 @@ export class StandardToolService {
   ) {}
 
   findAll(): Promise<StandardTool[]> {
-    return this.standardToolRepo.find({ 
+    return this.standardToolRepo.find({
       relations: ['category'],
-      order: { id: 'DESC' } 
+      order: { id: 'DESC' },
     });
   }
 
   async findOne(id: number): Promise<StandardTool> {
-    const tool = await this.standardToolRepo.findOne({ 
+    const tool = await this.standardToolRepo.findOne({
       where: { id },
-      relations: ['category']
+      relations: ['category'],
     });
     if (!tool) {
       throw new NotFoundException(`Standard Tool #${id} not found`);

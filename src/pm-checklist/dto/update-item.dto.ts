@@ -3,7 +3,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsPositive, IsString, Min } from 'class-validator';
 
 export class UpdateItemDto {
-  @ApiProperty({ example: 1, required: false, description: 'ID ของหมวดหมู่ที่รายการนี้สังกัด' })
+  @ApiProperty({
+    example: 1,
+    required: false,
+    description: 'ID ของหมวดหมู่ที่รายการนี้สังกัด',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()
