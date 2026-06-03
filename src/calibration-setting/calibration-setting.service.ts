@@ -18,17 +18,12 @@ export class CalibrationSettingService {
 
   async findAll() {
     const settings = await this.repository.find({
-      relations: [
-        'settingTools',
-        'settingTools.standardTool',
-      ],
+      relations: ['settingTools', 'settingTools.standardTool'],
       order: { id: 'ASC' },
     });
     return settings.map((s) => {
       s.standardTools = s.settingTools
-        ? s.settingTools
-            .map((st) => st.standardTool)
-            .filter(Boolean)
+        ? s.settingTools.map((st) => st.standardTool).filter(Boolean)
         : [];
       return s;
     });
@@ -37,17 +32,12 @@ export class CalibrationSettingService {
   async findByEquipment(toolName: string) {
     const settings = await this.repository.find({
       where: { tool_name: toolName },
-      relations: [
-        'settingTools',
-        'settingTools.standardTool',
-      ],
+      relations: ['settingTools', 'settingTools.standardTool'],
       order: { id: 'ASC' },
     });
     return settings.map((s) => {
       s.standardTools = s.settingTools
-        ? s.settingTools
-            .map((st) => st.standardTool)
-            .filter(Boolean)
+        ? s.settingTools.map((st) => st.standardTool).filter(Boolean)
         : [];
       return s;
     });
@@ -73,13 +63,11 @@ export class CalibrationSettingService {
       });
 
       if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
-        entity.settingTools = dto.standard_tool_ids.map(
-          (toolId) => {
-            const relation = new SettingTool();
-            relation.standard_tool_id = toolId;
-            return relation;
-          },
-        );
+        entity.settingTools = dto.standard_tool_ids.map((toolId) => {
+          const relation = new SettingTool();
+          relation.standard_tool_id = toolId;
+          return relation;
+        });
       } else {
         entity.settingTools = [];
       }

@@ -54,11 +54,9 @@ export class CalibrationSetting {
   @Column({ type: 'json', nullable: true })
   test_values: ICalibrationTestValue[];
 
-  @OneToMany(
-    () => SettingTool,
-    (st) => st.calibrationSetting,
-    { cascade: true },
-  )
+  @OneToMany(() => SettingTool, (st) => st.calibrationSetting, {
+    cascade: true,
+  })
   settingTools: SettingTool[];
 
   standardTools?: StandardTool[];

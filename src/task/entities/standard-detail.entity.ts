@@ -20,7 +20,9 @@ export class StandardDetail {
   @Column({ name: 'standard_tool_id', type: 'int' })
   standard_tool_id: number;
 
-  @ManyToOne(() => Task, (task) => task.standardDetails, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Task, (task) => task.standardDetails, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'task_id' })
   task: Task;
 

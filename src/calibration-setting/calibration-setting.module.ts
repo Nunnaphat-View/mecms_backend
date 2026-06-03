@@ -9,11 +9,7 @@ import { SettingTool } from './setting-tool.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      CalibrationSetting,
-      StandardTool,
-      SettingTool,
-    ]),
+    TypeOrmModule.forFeature([CalibrationSetting, StandardTool, SettingTool]),
   ],
   providers: [CalibrationSettingService],
   controllers: [CalibrationSettingController],

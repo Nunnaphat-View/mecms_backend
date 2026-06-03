@@ -19,11 +19,9 @@ export class SettingTool {
   @Column({ name: 'standard_tool_id', type: 'int' })
   standard_tool_id: number;
 
-  @ManyToOne(
-    () => CalibrationSetting,
-    (setting) => setting.settingTools,
-    { onDelete: 'CASCADE' },
-  )
+  @ManyToOne(() => CalibrationSetting, (setting) => setting.settingTools, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'calibration_setting_id' })
   calibrationSetting: CalibrationSetting;
 

@@ -40,7 +40,13 @@ export class Task {
   @JoinColumn({ name: 'equipment_id' })
   equipment: Equipment;
 
-  @Column({ name: 'cal_no', type: 'varchar', length: 50, nullable: true, unique: true })
+  @Column({
+    name: 'cal_no',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    unique: true,
+  })
   cal_no: string;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
