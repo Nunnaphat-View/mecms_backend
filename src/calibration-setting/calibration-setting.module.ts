@@ -6,9 +6,7 @@ import { CalibrationSettingController } from './calibration-setting.controller';
 import { StandardTool } from '../standard-tool/standard-tool.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([CalibrationSetting, StandardTool]),
-  ],
+  imports: [TypeOrmModule.forFeature([CalibrationSetting, StandardTool])],
   providers: [CalibrationSettingService],
   controllers: [CalibrationSettingController],
   exports: [CalibrationSettingService],

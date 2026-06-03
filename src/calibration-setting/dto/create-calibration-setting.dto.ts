@@ -58,7 +58,11 @@ export class CreateCalibrationSettingDto {
   @IsOptional()
   test_values?: ICalibrationTestValue[];
 
-  @ApiProperty({ type: [Number], required: false, description: 'IDs ของเครื่องมือมาตรฐานที่ใช้สอบเทียบ' })
+  @ApiProperty({
+    type: [Number],
+    required: false,
+    description: 'IDs ของเครื่องมือมาตรฐานที่ใช้สอบเทียบ',
+  })
   @IsArray()
   @IsInt({ each: true })
   @IsOptional()

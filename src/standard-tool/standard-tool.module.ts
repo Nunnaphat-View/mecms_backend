@@ -7,10 +7,7 @@ import { StandardToolController } from './standard-tool.controller.js';
 import { StorageModule } from '../storage/storage.module.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([StandardTool]),
-    StorageModule,
-  ],
+  imports: [TypeOrmModule.forFeature([StandardTool]), StorageModule],
   controllers: [StandardToolController],
   providers: [StandardToolService],
   exports: [TypeOrmModule, StandardToolService],

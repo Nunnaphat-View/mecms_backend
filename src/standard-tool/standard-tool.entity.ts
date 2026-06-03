@@ -1,9 +1,5 @@
 /* eslint-disable prettier/prettier */
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('standard_tools')
 export class StandardTool {
