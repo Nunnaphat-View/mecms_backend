@@ -230,7 +230,9 @@ export class NotificationService {
         // No specific technician found... broadcast
         try {
           await this.lineService.broadcastFlexMessage(altText, flexContent);
-          this.logger.log(`Broadcasted notification for equipment ${eq.tool_name}`);
+          this.logger.log(
+            `Broadcasted notification for equipment ${eq.tool_name}`,
+          );
         } catch (error) {
           this.logger.error(
             `Failed to broadcast notification for equipment ${eq.id}`,
