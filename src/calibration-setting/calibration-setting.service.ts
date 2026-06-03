@@ -3,20 +3,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CalibrationSetting } from './calibration-setting.entity';
 import { CreateCalibrationSettingDto } from './dto/create-calibration-setting.dto';
-import { StandardToolCategory } from '../standard-tool/standard-tool-category.entity';
+import { StandardTool } from '../standard-tool/standard-tool.entity';
 
 @Injectable()
 export class CalibrationSettingService {
   constructor(
     @InjectRepository(CalibrationSetting)
     private readonly repository: Repository<CalibrationSetting>,
-    @InjectRepository(StandardToolCategory)
-    private readonly categoryRepo: Repository<StandardToolCategory>,
+    @InjectRepository(StandardTool)
+    private readonly standardToolRepo: Repository<StandardTool>,
   ) {}
 
   async findAll() {
     return this.repository.find({
-      relations: ['categories'],
+      relations: ['standardTools'],
       order: { id: 'ASC' },
     });
   }
@@ -24,7 +24,7 @@ export class CalibrationSettingService {
   async findByEquipment(toolName: string) {
     return this.repository.find({
       where: { tool_name: toolName },
-      relations: ['categories'],
+      relations: ['standardTools'],
       order: { id: 'ASC' },
     });
   }
@@ -48,12 +48,12 @@ export class CalibrationSettingService {
         tool_name: toolName,
       });
 
-      if (dto.category_ids && dto.category_ids.length > 0) {
-        entity.categories = await this.categoryRepo.find({
-          where: { id: In(dto.category_ids) },
+      if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
+        entity.standardTools = await this.standardToolRepo.find({
+          where: { id: In(dto.standard_tool_ids) },
         });
       } else {
-        entity.categories = [];
+        entity.standardTools = [];
       }
 
       savedEntities.push(await this.repository.save(entity));

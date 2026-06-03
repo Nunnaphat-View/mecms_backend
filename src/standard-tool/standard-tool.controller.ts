@@ -42,18 +42,6 @@ export class StandardToolController {
     return this.standardToolService.findAll();
   }
 
-  @Get('categories')
-  @ApiOperation({ summary: 'รายการประเภทเครื่องมือมาตรฐานทั้งหมด' })
-  findAllCategories() {
-    return this.standardToolService.findAllCategories();
-  }
-
-  @Post('categories')
-  @ApiOperation({ summary: 'เพิ่มประเภทเครื่องมือมาตรฐานใหม่' })
-  createCategory(@Body('name') name: string) {
-    return this.standardToolService.createCategory(name);
-  }
-
   @Get(':id')
   @ApiOperation({ summary: 'เรียกดูเครื่องมือมาตรฐานรายชิ้น' })
   findOne(@Param('id', ParseIntPipe) id: number) {

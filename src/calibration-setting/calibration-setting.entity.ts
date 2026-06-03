@@ -7,7 +7,7 @@ import {
   ManyToMany,
   JoinTable,
 } from 'typeorm';
-import { StandardToolCategory } from '../standard-tool/standard-tool-category.entity';
+import { StandardTool } from '../standard-tool/standard-tool.entity';
 
 export interface ICalibrationTestValue {
   label: string;
@@ -53,13 +53,13 @@ export class CalibrationSetting {
   @Column({ type: 'json', nullable: true })
   test_values: ICalibrationTestValue[];
 
-  @ManyToMany(() => StandardToolCategory)
+  @ManyToMany(() => StandardTool)
   @JoinTable({
-    name: 'calibration_setting_categories',
+    name: 'calibration_setting_standard_tools',
     joinColumn: { name: 'calibration_setting_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'category_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'standard_tool_id', referencedColumnName: 'id' },
   })
-  categories: StandardToolCategory[];
+  standardTools: StandardTool[];
 
   @CreateDateColumn()
   created_at: Date;

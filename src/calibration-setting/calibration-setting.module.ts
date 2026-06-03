@@ -3,12 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CalibrationSetting } from './calibration-setting.entity';
 import { CalibrationSettingService } from './calibration-setting.service';
 import { CalibrationSettingController } from './calibration-setting.controller';
-
-import { StandardToolCategory } from '../standard-tool/standard-tool-category.entity';
+import { StandardTool } from '../standard-tool/standard-tool.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CalibrationSetting, StandardToolCategory]),
+    TypeOrmModule.forFeature([CalibrationSetting, StandardTool]),
   ],
   providers: [CalibrationSettingService],
   controllers: [CalibrationSettingController],
