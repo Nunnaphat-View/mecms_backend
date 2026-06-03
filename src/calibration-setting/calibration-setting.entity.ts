@@ -1,13 +1,14 @@
+/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToMany,
-  JoinTable,
+  OneToMany,
 } from 'typeorm';
 import { StandardTool } from '../standard-tool/standard-tool.entity';
+import { SettingTool } from './setting-tool.entity';
 
 export interface ICalibrationTestValue {
   label: string;
@@ -53,13 +54,14 @@ export class CalibrationSetting {
   @Column({ type: 'json', nullable: true })
   test_values: ICalibrationTestValue[];
 
-  @ManyToMany(() => StandardTool)
-  @JoinTable({
-    name: 'calibration_setting_standard_tools',
-    joinColumn: { name: 'calibration_setting_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'standard_tool_id', referencedColumnName: 'id' },
-  })
-  standardTools: StandardTool[];
+  @OneToMany(
+    () => SettingTool,
+    (st) => st.calibrationSetting,
+    { cascade: true },
+  )
+  settingTools: SettingTool[];
+
+  standardTools?: StandardTool[];
 
   @CreateDateColumn()
   created_at: Date;

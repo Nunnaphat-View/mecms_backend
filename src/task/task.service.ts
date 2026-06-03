@@ -25,6 +25,7 @@ import { EquipmentStatus } from '../equipment/equipment.entity.js';
 import { EquipmentService } from '../equipment/equipment.service.js';
 import { LineService } from '../line/line.service.js';
 import { User } from '../user/user.entity.js';
+import { StandardDetail } from './entities/standard-detail.entity.js';
 
 @Injectable()
 export class TaskService {
@@ -45,10 +46,12 @@ export class TaskService {
     private readonly lineService: LineService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(StandardDetail)
+    private readonly standardDetailRepo: Repository<StandardDetail>,
   ) {}
 
-  findAll(): Promise<Task[]> {
-    return this.taskRepo.find({
+  async findAll(): Promise<Task[]> {
+    const tasks = await this.taskRepo.find({
       relations: [
         'technician',
         'technician.hospital',
@@ -60,7 +63,8 @@ export class TaskService {
         'environments',
         'measurements',
         'qualitatives',
-        'standardTools',
+        'standardDetails',
+        'standardDetails.standardTool',
         'checklistResults',
         'checklistResults.item',
         'checklistRemarks',
@@ -68,6 +72,12 @@ export class TaskService {
         'specificParameters',
       ],
       order: { id: 'DESC' },
+    });
+    return tasks.map((task) => {
+      task.standardTools = task.standardDetails
+        ? task.standardDetails.map((sd) => sd.standardTool).filter(Boolean)
+        : [];
+      return task;
     });
   }
 
@@ -85,7 +95,8 @@ export class TaskService {
         'environments',
         'measurements',
         'qualitatives',
-        'standardTools',
+        'standardDetails',
+        'standardDetails.standardTool',
         'checklistResults',
         'checklistResults.item',
         'checklistRemarks',
@@ -94,34 +105,37 @@ export class TaskService {
       ],
     });
     if (!task) throw new NotFoundException(`Task #${id} not found`);
+    task.standardTools = task.standardDetails
+      ? task.standardDetails.map((sd) => sd.standardTool).filter(Boolean)
+      : [];
     return task;
   }
 
   async create(dto: CreateTaskDto): Promise<Task> {
     const year = new Date().getFullYear();
 
-    // ค้นหา pm_no ล่าสุดของปีนี้
+    // ค้นหา cal_no ล่าสุดของปีนี้
     const lastTask = await this.taskRepo
       .createQueryBuilder('task')
-      .where('task.pm_no LIKE :prefix', { prefix: `PM-${year}-%` })
-      .orderBy('task.pm_no', 'DESC')
+      .where('task.cal_no LIKE :prefix', { prefix: `CAL-${year}-%` })
+      .orderBy('task.cal_no', 'DESC')
       .getOne();
 
     let nextNumber = 1;
-    if (lastTask && lastTask.pm_no) {
-      const parts = lastTask.pm_no.split('-');
+    if (lastTask && lastTask.cal_no) {
+      const parts = lastTask.cal_no.split('-');
       if (parts.length === 3) {
         nextNumber = parseInt(parts[2], 10) + 1;
       }
     }
 
-    const pm_no = `PM-${year}-${String(nextNumber).padStart(4, '0')}`;
+    const cal_no = `CAL-${year}-${String(nextNumber).padStart(4, '0')}`;
 
     const task = this.taskRepo.create({
       equipment_id: dto.equipment_id,
       technician_id: dto.technician_id,
       status: 'Pending',
-      pm_no,
+      cal_no,
     });
     const saved = await this.taskRepo.save(task);
 
@@ -144,7 +158,8 @@ export class TaskService {
           'equipment',
           'equipment.section',
           'equipment.section.hospital',
-          'standardTools',
+          'standardDetails',
+          'standardDetails.standardTool',
           'technician',
           'technician.hospital',
         ],
@@ -237,13 +252,17 @@ export class TaskService {
           `Explicitly linking tools for task ${id}:`,
           dto.standard_tool_ids,
         );
+        // Clear old ones first to prevent duplicates (since it's a junction table)
+        await this.standardDetailRepo.delete({ task_id: id });
+
         if (dto.standard_tool_ids.length > 0) {
-          const tools = await this.standardToolRepo.find({
-            where: { id: In(dto.standard_tool_ids) },
+          task.standardDetails = dto.standard_tool_ids.map((toolId) => {
+            const detail = new StandardDetail();
+            detail.standard_tool_id = toolId;
+            return detail;
           });
-          task.standardTools = tools;
         } else {
-          task.standardTools = [];
+          task.standardDetails = [];
         }
       }
 
@@ -286,6 +305,15 @@ export class TaskService {
       }
 
       const finalTask = await this.taskRepo.save(task);
+
+      if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
+        finalTask.standardTools = await this.standardToolRepo.find({
+          where: { id: In(dto.standard_tool_ids) },
+        });
+      } else {
+        finalTask.standardTools = [];
+      }
+
       console.log('=== Task submitted successfully ===');
 
       return finalTask;

@@ -5,6 +5,8 @@ import { CalibrationSetting } from './calibration-setting.entity';
 import { CreateCalibrationSettingDto } from './dto/create-calibration-setting.dto';
 import { StandardTool } from '../standard-tool/standard-tool.entity';
 
+import { SettingTool } from './setting-tool.entity';
+
 @Injectable()
 export class CalibrationSettingService {
   constructor(
@@ -15,17 +17,39 @@ export class CalibrationSettingService {
   ) {}
 
   async findAll() {
-    return this.repository.find({
-      relations: ['standardTools'],
+    const settings = await this.repository.find({
+      relations: [
+        'settingTools',
+        'settingTools.standardTool',
+      ],
       order: { id: 'ASC' },
+    });
+    return settings.map((s) => {
+      s.standardTools = s.settingTools
+        ? s.settingTools
+            .map((st) => st.standardTool)
+            .filter(Boolean)
+        : [];
+      return s;
     });
   }
 
   async findByEquipment(toolName: string) {
-    return this.repository.find({
+    const settings = await this.repository.find({
       where: { tool_name: toolName },
-      relations: ['standardTools'],
+      relations: [
+        'settingTools',
+        'settingTools.standardTool',
+      ],
       order: { id: 'ASC' },
+    });
+    return settings.map((s) => {
+      s.standardTools = s.settingTools
+        ? s.settingTools
+            .map((st) => st.standardTool)
+            .filter(Boolean)
+        : [];
+      return s;
     });
   }
 
@@ -49,14 +73,28 @@ export class CalibrationSettingService {
       });
 
       if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
-        entity.standardTools = await this.standardToolRepo.find({
+        entity.settingTools = dto.standard_tool_ids.map(
+          (toolId) => {
+            const relation = new SettingTool();
+            relation.standard_tool_id = toolId;
+            return relation;
+          },
+        );
+      } else {
+        entity.settingTools = [];
+      }
+
+      const saved = await this.repository.save(entity);
+
+      if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
+        saved.standardTools = await this.standardToolRepo.find({
           where: { id: In(dto.standard_tool_ids) },
         });
       } else {
-        entity.standardTools = [];
+        saved.standardTools = [];
       }
 
-      savedEntities.push(await this.repository.save(entity));
+      savedEntities.push(saved);
     }
 
     return savedEntities;

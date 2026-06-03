@@ -5,8 +5,6 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
-  ManyToMany,
-  JoinTable,
   CreateDateColumn,
 } from 'typeorm';
 import { User } from '../user/user.entity.js';
@@ -18,6 +16,7 @@ import { StandardTool } from '../standard-tool/standard-tool.entity.js';
 import { PmChecklistResult } from '../pm-checklist/entities/pm-checklist-result.entity.js';
 import { PmCategoryRemark } from '../pm-checklist/entities/pm-category-remark.entity.js';
 import { SpecificParameter } from './entities/specific-parameter.entity.js';
+import { StandardDetail } from './entities/standard-detail.entity.js';
 
 export type TaskStatus =
   | 'Pending'
@@ -41,8 +40,8 @@ export class Task {
   @JoinColumn({ name: 'equipment_id' })
   equipment: Equipment;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, unique: true })
-  pm_no: string;
+  @Column({ name: 'cal_no', type: 'varchar', length: 50, nullable: true, unique: true })
+  cal_no: string;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   overall_result: OverallResult;
@@ -79,13 +78,10 @@ export class Task {
   @OneToMany(() => Qualitative, (q) => q.task)
   qualitatives: Qualitative[];
 
-  @ManyToMany(() => StandardTool)
-  @JoinTable({
-    name: 'standard_detail',
-    joinColumn: { name: 'task_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'standard_tool_id', referencedColumnName: 'id' },
-  })
-  standardTools: StandardTool[];
+  @OneToMany(() => StandardDetail, (sd) => sd.task, { cascade: true })
+  standardDetails: StandardDetail[];
+
+  standardTools?: StandardTool[];
 
   @OneToMany(() => PmChecklistResult, (result) => result.task)
   checklistResults: PmChecklistResult[];

@@ -11,6 +11,7 @@ import { SpecificParameter } from './entities/specific-parameter.entity.js';
 import { User } from '../user/user.entity.js';
 import { EquipmentModule } from '../equipment/equipment.module.js';
 import { StorageModule } from '../storage/storage.module.js';
+import { StandardDetail } from './entities/standard-detail.entity.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { StorageModule } from '../storage/storage.module.js';
       Qualitative,
       SpecificParameter,
       User,
+      StandardDetail,
     ]),
     EquipmentModule,
     StorageModule,
