@@ -13,7 +13,7 @@ export class CreateEquipmentDto {
   @ApiProperty({ example: 'เครื่องวัดความดัน' })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  tool_name: string;
 
   @ApiProperty({ example: 'AST-0001', required: false })
   @IsOptional()

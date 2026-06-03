@@ -20,7 +20,7 @@ export class CalibrationSetting {
   id: number;
 
   @Column({ type: 'varchar', length: 255 })
-  equipment_name: string;
+  tool_name: string;
 
   @Column({
     type: 'enum',

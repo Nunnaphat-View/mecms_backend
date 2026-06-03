@@ -24,26 +24,26 @@ export class CalibrationSettingController {
     return this.service.findAll();
   }
 
-  @Get(':equipmentName')
+  @Get(':toolName')
   @ApiOperation({ summary: 'Get settings for a specific equipment' })
-  findByEquipment(@Param('equipmentName') equipmentName: string) {
-    return this.service.findByEquipment(equipmentName);
+  findByEquipment(@Param('toolName') toolName: string) {
+    return this.service.findByEquipment(toolName);
   }
 
-  @Post('batch/:equipmentName')
+  @Post('batch/:toolName')
   @ApiOperation({
     summary: 'Save batch of calibration settings for an equipment',
   })
   batchSave(
-    @Param('equipmentName') equipmentName: string,
+    @Param('toolName') toolName: string,
     @Body() dtos: CreateCalibrationSettingDto[],
   ) {
-    return this.service.batchSave(equipmentName, dtos);
+    return this.service.batchSave(toolName, dtos);
   }
 
-  @Delete(':equipmentName')
+  @Delete(':toolName')
   @ApiOperation({ summary: 'Delete all settings for an equipment' })
-  deleteByEquipment(@Param('equipmentName') equipmentName: string) {
-    return this.service.deleteByEquipment(equipmentName);
+  deleteByEquipment(@Param('toolName') toolName: string) {
+    return this.service.deleteByEquipment(toolName);
   }
 }

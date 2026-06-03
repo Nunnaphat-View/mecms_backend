@@ -13,7 +13,7 @@ export class StandardTool {
   id: number;
 
   @Column({ type: 'varchar', length: 255 })
-  name: string;
+  tool_name: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   asset_code: string;

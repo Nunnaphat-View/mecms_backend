@@ -21,22 +21,22 @@ export class CalibrationSettingService {
     });
   }
 
-  async findByEquipment(equipmentName: string) {
+  async findByEquipment(toolName: string) {
     return this.repository.find({
-      where: { equipment_name: equipmentName },
+      where: { tool_name: toolName },
       relations: ['categories'],
       order: { id: 'ASC' },
     });
   }
 
-  async batchSave(equipmentName: string, dtos: CreateCalibrationSettingDto[]) {
+  async batchSave(toolName: string, dtos: CreateCalibrationSettingDto[]) {
     console.log(
-      `Saving batch settings for ${equipmentName}:`,
+      `Saving batch settings for ${toolName}:`,
       JSON.stringify(dtos, null, 2),
     );
 
     // 1. Delete existing settings for this equipment
-    await this.repository.delete({ equipment_name: equipmentName });
+    await this.repository.delete({ tool_name: toolName });
 
     // 2. Save new settings
     const savedEntities: CalibrationSetting[] = [];
@@ -45,7 +45,7 @@ export class CalibrationSettingService {
       const entity = this.repository.create({
         ...dto,
         parameter_name: dto.parameter_name ?? null,
-        equipment_name: equipmentName,
+        tool_name: toolName,
       });
 
       if (dto.category_ids && dto.category_ids.length > 0) {
@@ -62,7 +62,7 @@ export class CalibrationSettingService {
     return savedEntities;
   }
 
-  async deleteByEquipment(equipmentName: string) {
-    return this.repository.delete({ equipment_name: equipmentName });
+  async deleteByEquipment(toolName: string) {
+    return this.repository.delete({ tool_name: toolName });
   }
 }

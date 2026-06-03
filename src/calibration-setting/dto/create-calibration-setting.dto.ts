@@ -13,7 +13,7 @@ export class CreateCalibrationSettingDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  equipment_name: string;
+  tool_name: string;
 
   @ApiProperty({ enum: ['quantitative', 'qualitative'] })
   @IsEnum(['quantitative', 'qualitative'])

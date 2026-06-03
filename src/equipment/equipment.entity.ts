@@ -27,7 +27,7 @@ export class Equipment {
   id: number;
 
   @Column({ type: 'varchar', length: 255 })
-  name: string;
+  tool_name: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   asset_code: string;

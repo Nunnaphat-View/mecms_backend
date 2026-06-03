@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -77,7 +78,7 @@ export class NotificationService {
           contents: [
             {
               type: 'text',
-              text: eq.name,
+              text: eq.tool_name,
               weight: 'bold',
               size: 'xl',
               margin: 'md',
@@ -208,7 +209,7 @@ export class NotificationService {
         },
       };
 
-      const altText = `แจ้งเตือน: เครื่องมือ ${eq.name} ใกล้ครบกำหนดสอบเทียบ`;
+      const altText = `แจ้งเตือน: เครื่องมือ ${eq.tool_name} ใกล้ครบกำหนดสอบเทียบ`;
 
       if (lastTask?.technician?.lineUserId) {
         // Notify the specific technician
@@ -218,7 +219,7 @@ export class NotificationService {
             altText,
             flexContent,
           );
-          this.logger.log(`Notified technician for equipment ${eq.name}`);
+          this.logger.log(`Notified technician for equipment ${eq.tool_name}`);
         } catch (error) {
           this.logger.error(
             `Failed to notify technician for equipment ${eq.id}`,
@@ -229,7 +230,7 @@ export class NotificationService {
         // No specific technician found... broadcast
         try {
           await this.lineService.broadcastFlexMessage(altText, flexContent);
-          this.logger.log(`Broadcasted notification for equipment ${eq.name}`);
+          this.logger.log(`Broadcasted notification for equipment ${eq.tool_name}`);
         } catch (error) {
           this.logger.error(
             `Failed to broadcast notification for equipment ${eq.id}`,

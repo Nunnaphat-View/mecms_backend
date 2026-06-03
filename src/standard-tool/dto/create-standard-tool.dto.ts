@@ -14,7 +14,7 @@ export class CreateStandardToolDto {
   })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  tool_name: string;
 
   @ApiProperty({
     example: 'STD-001',
