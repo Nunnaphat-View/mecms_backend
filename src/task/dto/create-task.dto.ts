@@ -10,5 +10,5 @@ export class CreateTaskDto {
   @ApiProperty({ example: 5, description: 'User ID ของช่างที่รับผิดชอบ' })
   @IsInt()
   @IsPositive()
-  task_user: number;
+  technician_id: number;
 }

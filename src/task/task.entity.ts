@@ -57,10 +57,10 @@ export class Task {
   remarks?: string;
 
   @Column({ type: 'int', nullable: true })
-  task_user: number;
+  technician_id: number;
 
   @ManyToOne(() => User, { nullable: true, eager: false })
-  @JoinColumn({ name: 'task_user' })
+  @JoinColumn({ name: 'technician_id' })
   technician: User;
 
   @Column({ type: 'int', nullable: true })

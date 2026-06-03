@@ -119,7 +119,7 @@ export class TaskService {
 
     const task = this.taskRepo.create({
       equipment_id: dto.equipment_id,
-      task_user: dto.task_user,
+      technician_id: dto.technician_id,
       status: 'Pending',
       pm_no,
     });

@@ -36,12 +36,12 @@ async function run() {
 
   // 3. Ensure there is a task for this equipment to identify a technician
   const [tasks] = await connection.execute(
-    'SELECT id, task_user FROM tasks WHERE equipment_id = ? ORDER BY id DESC LIMIT 1',
+    'SELECT id, technician_id FROM tasks WHERE equipment_id = ? ORDER BY id DESC LIMIT 1',
     [eqId]
   );
 
   if (tasks.length > 0) {
-    console.log(`✅ Found existing task. Notification will be sent to Technician ID: ${tasks[0].task_user}`);
+    console.log(`✅ Found existing task. Notification will be sent to Technician ID: ${tasks[0].technician_id}`);
   } else {
     // Optional: Create a dummy task if none exists, or just explain it will broadcast
     console.log('ℹ️ No previous task found for this equipment. Notification will be BROADCASTED to the main channel.');
