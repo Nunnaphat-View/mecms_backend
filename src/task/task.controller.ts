@@ -130,7 +130,10 @@ export class TaskController {
 
   @Post('schedule/analyze')
   @ApiOperation({ summary: 'วิเคราะห์และสรุปแผนงานสอบเทียบโดย AI' })
-  @ApiResponse({ status: 200, description: 'บทวิเคราะห์สรุปแผนงานในรูปแบบ Markdown' })
+  @ApiResponse({
+    status: 200,
+    description: 'บทวิเคราะห์สรุปแผนงานในรูปแบบ Markdown',
+  })
   analyzeSchedule(@Body() dto: AutoAssignDto) {
     return this.taskService.analyzeScheduleForMonth(dto.month, dto.year);
   }
