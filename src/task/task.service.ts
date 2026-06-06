@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, DataSource, Brackets } from 'typeorm';
 import { Task } from './task.entity.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { SubmitTaskDto } from './dto/submit-task.dto.js';
@@ -21,11 +21,14 @@ import { Environment } from './entities/environment.entity.js';
 import { Measurement } from './entities/measurement.entity.js';
 import { Qualitative } from './entities/qualitative.entity.js';
 import { SpecificParameter } from './entities/specific-parameter.entity.js';
-import { EquipmentStatus } from '../equipment/equipment.entity.js';
+import { Equipment, EquipmentStatus } from '../equipment/equipment.entity.js';
 import { EquipmentService } from '../equipment/equipment.service.js';
 import { LineService } from '../line/line.service.js';
 import { User } from '../user/user.entity.js';
 import { StandardDetail } from './entities/standard-detail.entity.js';
+import { Hospital } from '../hospital/entities/hospital.entity.js';
+import { Section } from '../section/entities/section.entity.js';
+import { UserSpecialty } from '../user/user-specialty.entity.js';
 
 @Injectable()
 export class TaskService {
@@ -48,6 +51,7 @@ export class TaskService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(StandardDetail)
     private readonly standardDetailRepo: Repository<StandardDetail>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findAll(): Promise<Task[]> {
@@ -428,5 +432,387 @@ export class TaskService {
     const task = await this.findOne(id);
     task.path_pdf_cer = path;
     return this.taskRepo.save(task);
+  }
+
+  async rescheduleTasksToDate(
+    taskIds: number[],
+    newDate: string,
+  ): Promise<Task[]> {
+    const targetDate = new Date(newDate);
+
+    const tasks = await this.taskRepo.find({
+      where: taskIds.map((id) => ({ id })),
+      relations: ['equipment', 'equipment.section', 'technician'],
+    });
+
+    if (tasks.length === 0) {
+      throw new NotFoundException('ไม่พบงานสอบเทียบที่ระบุ');
+    }
+
+    await this.dataSource.transaction(async (entityManager) => {
+      for (const task of tasks) {
+        if (task.equipment) {
+          task.equipment.calibration_due_date = targetDate;
+          await entityManager.save(Equipment, task.equipment);
+        }
+      }
+    });
+
+    return tasks;
+  }
+
+  async autoAssignTasksForMonth(month: number, year: number): Promise<Task[]> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const tasks = await this.taskRepo
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.equipment', 'equipment')
+      .leftJoinAndSelect('equipment.section', 'section')
+      .leftJoinAndSelect('task.technician', 'technician')
+      .where('task.status = :status', { status: 'Pending' })
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where(
+            'equipment.calibration_due_date BETWEEN :startDate AND :endDate',
+            { startDate, endDate },
+          ).orWhere(
+            'equipment.calibration_due_date IS NULL AND task.createdAt BETWEEN :startDate AND :endDate',
+            { startDate, endDate },
+          );
+        }),
+      )
+      .getMany();
+
+    if (tasks.length === 0) {
+      return [];
+    }
+
+    const technicians = await this.userRepo.find({
+      where: { roleId: 2 },
+      relations: ['specialties'],
+    });
+
+    if (technicians.length === 0) {
+      throw new BadRequestException('No technicians found in the system');
+    }
+
+    const workloads: { [techId: number]: number } = {};
+    for (const tech of technicians) {
+      workloads[tech.id] = 0;
+    }
+
+    const getCandidates = (task: Task) => {
+      const toolName = task.equipment?.tool_name;
+      if (!toolName) return technicians;
+      const matched = technicians.filter((tech) =>
+        tech.specialties?.some(
+          (spec) => spec.toolName.toLowerCase() === toolName.toLowerCase(),
+        ),
+      );
+      return matched.length > 0 ? matched : technicians;
+    };
+
+    const sectionGroups: { [key: number]: Task[] } = {};
+    const noSectionTasks: Task[] = [];
+    for (const task of tasks) {
+      const secId = task.equipment?.sectionId;
+      if (secId) {
+        if (!sectionGroups[secId]) sectionGroups[secId] = [];
+        sectionGroups[secId].push(task);
+      } else {
+        noSectionTasks.push(task);
+      }
+    }
+
+    const sectionAssignments: { [sectionId: number]: number } = {};
+
+    const sortedSectionIds = Object.keys(sectionGroups)
+      .map(Number)
+      .sort((a, b) => sectionGroups[b].length - sectionGroups[a].length);
+
+    const assignTask = (task: Task, sectionId?: number) => {
+      const candidates = getCandidates(task);
+      let selectedTech = candidates[0];
+
+      if (sectionId && sectionAssignments[sectionId]) {
+        const existingSectionTechId = sectionAssignments[sectionId];
+        const found = candidates.find((c) => c.id === existingSectionTechId);
+        if (found) {
+          selectedTech = found;
+        } else {
+          selectedTech = candidates.reduce(
+            (min, curr) =>
+              workloads[curr.id] < workloads[min.id] ? curr : min,
+            candidates[0],
+          );
+        }
+      } else {
+        selectedTech = candidates.reduce(
+          (min, curr) => (workloads[curr.id] < workloads[min.id] ? curr : min),
+          candidates[0],
+        );
+      }
+
+      task.technician_id = selectedTech.id;
+      task.technician = selectedTech;
+      workloads[selectedTech.id]++;
+      if (sectionId) {
+        sectionAssignments[sectionId] = selectedTech.id;
+      }
+    };
+
+    for (const secId of sortedSectionIds) {
+      const groupTasks = sectionGroups[secId];
+      for (const task of groupTasks) {
+        assignTask(task, secId);
+      }
+    }
+
+    for (const task of noSectionTasks) {
+      assignTask(task);
+    }
+
+    // Distribute tasks across month days (grouping tasks in same section to the same day)
+    const daysInMonth = new Date(year, month, 0).getDate();
+    let dayCounter = 1;
+
+    for (const secId of sortedSectionIds) {
+      const groupTasks = sectionGroups[secId];
+      for (const task of groupTasks) {
+        if (task.equipment) {
+          const targetDay = dayCounter;
+          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+          task.equipment.calibration_due_date = new Date(dateStr);
+        }
+      }
+      dayCounter = (dayCounter % daysInMonth) + 1;
+    }
+
+    for (const task of noSectionTasks) {
+      if (task.equipment) {
+        const targetDay = dayCounter;
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+        task.equipment.calibration_due_date = new Date(dateStr);
+        dayCounter = (dayCounter % daysInMonth) + 1;
+      }
+    }
+
+    // Save in transaction
+    await this.dataSource.transaction(async (entityManager) => {
+      for (const task of tasks) {
+        await entityManager.save(Task, task);
+        if (task.equipment) {
+          await entityManager.save(Equipment, task.equipment);
+        }
+      }
+    });
+
+    return tasks;
+  }
+
+  async publishTasksForMonth(month: number, year: number): Promise<Task[]> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const tasks = await this.taskRepo
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.equipment', 'equipment')
+      .leftJoinAndSelect('equipment.section', 'section')
+      .leftJoinAndSelect('task.technician', 'technician')
+      .where('task.status = :status', { status: 'Pending' })
+      .andWhere('task.technician_id IS NOT NULL')
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where(
+            'equipment.calibration_due_date BETWEEN :startDate AND :endDate',
+            { startDate, endDate },
+          ).orWhere(
+            'equipment.calibration_due_date IS NULL AND task.createdAt BETWEEN :startDate AND :endDate',
+            { startDate, endDate },
+          );
+        }),
+      )
+      .getMany();
+
+    if (tasks.length === 0) {
+      return [];
+    }
+
+    await this.dataSource.transaction(async (entityManager) => {
+      for (const task of tasks) {
+        task.status = 'InProgress';
+        await entityManager.save(Task, task);
+      }
+    });
+
+    return tasks;
+  }
+
+  async assignTechnicianToTask(
+    taskId: number,
+    technicianId: number,
+  ): Promise<Task> {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId },
+      relations: ['equipment', 'equipment.section', 'technician'],
+    });
+    if (!task) {
+      throw new NotFoundException(`Task #${taskId} not found`);
+    }
+
+    const technician = await this.userRepo.findOne({
+      where: { id: technicianId, roleId: 2 },
+    });
+    if (!technician) {
+      throw new NotFoundException(`Technician #${technicianId} not found`);
+    }
+
+    task.technician_id = technicianId;
+    task.technician = technician;
+
+    return this.taskRepo.save(task);
+  }
+
+  async seedTestData(): Promise<{ message: string }> {
+    await this.dataSource.transaction(async (entityManager) => {
+      // 1. Get or create a default hospital
+      let hospital = await entityManager.findOne(Hospital, { where: {} });
+      if (!hospital) {
+        hospital = new Hospital();
+        hospital.name = 'โรงพยาบาลทดสอบ';
+        hospital.address = '123 ถนนทดสอบ';
+        hospital.district = 'เมือง';
+        hospital.province = 'กรุงเทพฯ';
+        hospital.zipCode = '10100';
+        hospital = await entityManager.save(Hospital, hospital);
+      }
+
+      // 2. Get or create default sections (ER, ICU, IPD, OPD)
+      const sectionNames = ['ER', 'ICU', 'IPD', 'OPD'];
+      const sections: Record<string, Section> = {};
+      for (const name of sectionNames) {
+        let sec = await entityManager.findOne(Section, { where: { name } });
+        if (!sec) {
+          sec = new Section();
+          sec.name = name;
+          sec.hospital = hospital;
+          sec = await entityManager.save(Section, sec);
+        }
+        sections[name] = sec;
+      }
+
+      // 3. Find or create 3 technicians with specialties
+      let tech1 = await entityManager.findOne(User, {
+        where: { username: 'somchai' },
+      });
+      if (!tech1) {
+        tech1 = new User();
+        tech1.username = 'somchai';
+        tech1.name = 'ช่างสมชาย (Defib, Infusion)';
+        tech1.password =
+          '$2b$10$tM3V.9qjUeQWpA7e6u3RquVf2V5oN7r2g/1o2c3d4e5f6g7h8i9j'; // hashed "password"
+        tech1.roleId = 2;
+        tech1.hospital = hospital;
+        tech1 = await entityManager.save(User, tech1);
+      }
+
+      let tech2 = await entityManager.findOne(User, {
+        where: { username: 'somying' },
+      });
+      if (!tech2) {
+        tech2 = new User();
+        tech2.username = 'somying';
+        tech2.name = 'ช่างสมหญิง (ECG, Infusion)';
+        tech2.password =
+          '$2b$10$tM3V.9qjUeQWpA7e6u3RquVf2V5oN7r2g/1o2c3d4e5f6g7h8i9j';
+        tech2.roleId = 2;
+        tech2.hospital = hospital;
+        tech2 = await entityManager.save(User, tech2);
+      }
+
+      let tech3 = await entityManager.findOne(User, {
+        where: { username: 'somsak' },
+      });
+      if (!tech3) {
+        tech3 = new User();
+        tech3.username = 'somsak';
+        tech3.name = 'ช่างสมศักดิ์ (Defib, Pressure)';
+        tech3.password =
+          '$2b$10$tM3V.9qjUeQWpA7e6u3RquVf2V5oN7r2g/1o2c3d4e5f6g7h8i9j';
+        tech3.roleId = 2;
+        tech3.hospital = hospital;
+        tech3 = await entityManager.save(User, tech3);
+      }
+
+      // Refresh specialties
+      await entityManager.delete(UserSpecialty, { userId: tech1.id });
+      await entityManager.delete(UserSpecialty, { userId: tech2.id });
+      await entityManager.delete(UserSpecialty, { userId: tech3.id });
+
+      const specs = [
+        { tech: tech1, tools: ['Defibrillator', 'Infusion Pump'] },
+        { tech: tech2, tools: ['ECG Monitor', 'Infusion Pump'] },
+        { tech: tech3, tools: ['Defibrillator', 'Pressure Gauge'] },
+      ];
+
+      for (const spec of specs) {
+        for (const tool of spec.tools) {
+          const us = new UserSpecialty();
+          us.userId = spec.tech.id;
+          us.toolName = tool;
+          await entityManager.save(UserSpecialty, us);
+        }
+      }
+
+      // 4. Create 9 medical equipments with due date in June 15, 2026
+      const equipmentsData = [
+        { name: 'Defibrillator', code: 'BME-DF-001', section: 'ER' },
+        { name: 'Defibrillator', code: 'BME-DF-002', section: 'ER' },
+        { name: 'Defibrillator', code: 'BME-DF-003', section: 'ICU' },
+        { name: 'Infusion Pump', code: 'BME-IP-001', section: 'ICU' },
+        { name: 'Infusion Pump', code: 'BME-IP-002', section: 'ICU' },
+        { name: 'Infusion Pump', code: 'BME-IP-003', section: 'IPD' },
+        { name: 'ECG Monitor', code: 'BME-ECG-001', section: 'ER' },
+        { name: 'ECG Monitor', code: 'BME-ECG-002', section: 'ER' },
+        { name: 'Pressure Gauge', code: 'BME-PG-001', section: 'OPD' },
+      ];
+
+      for (const eqData of equipmentsData) {
+        let eq = await entityManager.findOne(Equipment, {
+          where: { asset_code: eqData.code },
+        });
+        if (eq) {
+          const oldTasks = await entityManager.find(Task, {
+            where: { equipment_id: eq.id },
+          });
+          for (const t of oldTasks) {
+            await entityManager.delete(Task, t.id);
+          }
+        } else {
+          eq = new Equipment();
+        }
+
+        eq.tool_name = eqData.name;
+        eq.asset_code = eqData.code;
+        eq.status = 'ready';
+        eq.calibration_due_date = new Date('2026-06-15');
+        eq.section = sections[eqData.section];
+        eq = await entityManager.save(Equipment, eq);
+
+        const year = 2026;
+        const count = await entityManager.count(Task, { where: {} });
+        const cal_no = `CAL-${year}-${String(count + 1).padStart(4, '0')}`;
+
+        const task = new Task();
+        task.equipment_id = eq.id;
+        task.cal_no = cal_no;
+        task.status = 'Pending';
+        task.technician_id = null as any;
+        await entityManager.save(Task, task);
+      }
+    });
+
+    return { message: 'Seed data generated successfully for June 2026!' };
   }
 }

@@ -24,6 +24,10 @@ import { TaskService } from './task.service.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { SubmitTaskDto } from './dto/submit-task.dto.js';
 import { ApproveTaskDto } from './dto/approve-task.dto.js';
+import { AutoAssignDto } from './dto/auto-assign.dto.js';
+import { PublishTasksDto } from './dto/publish-tasks.dto.js';
+import { AssignTechnicianDto } from './dto/assign-technician.dto.js';
+import { RescheduleTasksDto } from './dto/reschedule-tasks.dto.js';
 
 @ApiTags('Task')
 @Controller('pm-task')
@@ -88,5 +92,39 @@ export class TaskController {
   ) {
     const fileUrl = await this.storageService.uploadFile(file, 'certs');
     return this.taskService.updateCerPath(id, fileUrl);
+  }
+
+  @Post('auto-assign')
+  @ApiOperation({ summary: 'AI จัดตารางงานมอบหมายช่างประจำเดือนอัตโนมัติ' })
+  autoAssign(@Body() dto: AutoAssignDto) {
+    return this.taskService.autoAssignTasksForMonth(dto.month, dto.year);
+  }
+
+  @Post('publish')
+  @ApiOperation({ summary: 'เผยแพร่แผนงานสอบเทียบช่างประจำเดือน' })
+  publish(@Body() dto: PublishTasksDto) {
+    return this.taskService.publishTasksForMonth(dto.month, dto.year);
+  }
+
+  @Patch(':id/assign')
+  @ApiOperation({ summary: 'มอบหมายช่างผู้รับผิดชอบด้วยตนเอง' })
+  assignTechnician(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AssignTechnicianDto,
+  ) {
+    return this.taskService.assignTechnicianToTask(id, dto.technician_id);
+  }
+
+  @Post('seed')
+  @ApiOperation({ summary: 'จำลองข้อมูลทดสอบสำหรับมิถุนายน 2569 (June 2026)' })
+  seed() {
+    return this.taskService.seedTestData();
+  }
+
+  @Patch('reschedule')
+  @ApiOperation({ summary: 'ย้ายวันที่สอบเทียบของกลุ่มงาน (Drag & Drop)' })
+  @ApiResponse({ status: 200, description: 'อัปเดตวันสอบเทียบสำเร็จ' })
+  reschedule(@Body() dto: RescheduleTasksDto) {
+    return this.taskService.rescheduleTasksToDate(dto.taskIds, dto.newDate);
   }
 }
