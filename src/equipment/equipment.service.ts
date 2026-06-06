@@ -86,7 +86,6 @@ export class EquipmentService {
     }
 
     if (dto.equipment_type_id !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       delete (equipment as any).equipmentType;
     }
 
