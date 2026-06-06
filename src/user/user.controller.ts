@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Put,
   Post,
   Patch,
   Delete,
@@ -24,6 +25,7 @@ import { extname } from 'path';
 import { UserService } from './user.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UpdateSpecialtiesDto } from './dto/update-specialties.dto.js';
 
 interface UserUploadedFiles {
   image?: Express.Multer.File[];
@@ -187,5 +189,25 @@ export class UserController {
   @ApiParam({ name: 'id', type: Number, description: 'ID ของผู้ใช้' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.userService.remove(id);
+  }
+
+  @Get(':id/specialties')
+  @ApiOperation({ summary: 'ดึงข้อมูลความเชี่ยวชาญของช่าง' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID ของผู้ใช้ (ช่าง)' })
+  getSpecialties(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.getSpecialties(id);
+  }
+
+  @Put(':id/specialties')
+  @ApiOperation({ summary: 'อัปเดตข้อมูลความเชี่ยวชาญของช่าง' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID ของผู้ใช้ (ช่าง)' })
+  updateSpecialties(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSpecialtiesDto: UpdateSpecialtiesDto,
+  ) {
+    return this.userService.updateSpecialties(
+      id,
+      updateSpecialtiesDto.toolNames,
+    );
   }
 }

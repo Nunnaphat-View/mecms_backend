@@ -4,10 +4,12 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Role } from '../role/role.entity.js';
 import { Hospital } from '../hospital/entities/hospital.entity.js';
+import { UserSpecialty } from './user-specialty.entity.js';
 
 @Entity('user')
 export class User {
@@ -52,4 +54,7 @@ export class User {
   @ManyToOne(() => Hospital, (hospital) => hospital.users)
   @JoinColumn({ name: 'hospitalId' })
   hospital: Hospital;
+
+  @OneToMany(() => UserSpecialty, (specialty) => specialty.user)
+  specialties: UserSpecialty[];
 }

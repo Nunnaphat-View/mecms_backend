@@ -49,6 +49,13 @@ export class EquipmentController {
     return this.equipmentService.findAll();
   }
 
+  @Get('tool-names')
+  @ApiOperation({ summary: 'ดึงรายชื่อเครื่องมือทั้งหมดที่ไม่ซ้ำกัน' })
+  @ApiResponse({ status: 200, description: 'คืนค่า Array of String' })
+  getUniqueToolNames() {
+    return this.equipmentService.getUniqueToolNames();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'ดูเครื่องมือตาม ID' })
   @ApiParam({ name: 'id', type: Number })

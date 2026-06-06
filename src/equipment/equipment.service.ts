@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -100,5 +101,14 @@ export class EquipmentService {
       throw new NotFoundException(`Equipment #${id} not found`);
     }
     await this.equipmentRepo.softRemove(equipment);
+  }
+
+  async getUniqueToolNames(): Promise<string[]> {
+    const results = await this.equipmentRepo
+      .createQueryBuilder('equipment')
+      .select('DISTINCT equipment.tool_name', 'tool_name')
+      .orderBy('equipment.tool_name', 'ASC')
+      .getRawMany();
+    return results.map((r) => r.tool_name as string).filter(Boolean);
   }
 }
