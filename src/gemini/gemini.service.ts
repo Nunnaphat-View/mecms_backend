@@ -8,20 +8,19 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-interface GeminiRequest {
-  contents: Array<{
-    parts: Array<{
-      text: string;
-    }>;
+interface GroqRequest {
+  model: string;
+  messages: Array<{
+    role: string;
+    content: string;
   }>;
+  temperature?: number;
 }
 
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
+interface GroqResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
     };
   }>;
 }
@@ -32,29 +31,28 @@ export class GeminiService {
   private readonly apiKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
+    this.apiKey = this.configService.get<string>('GROQ_API_KEY') || '';
   }
 
   async generateContent(prompt: string): Promise<string> {
     if (!this.apiKey) {
       this.logger.warn(
-        'GEMINI_API_KEY is not defined in the environment variables.',
+        'GROQ_API_KEY is not defined in the environment variables.',
       );
       return 'ไม่สามารถวิเคราะห์แผนงานได้เนื่องจากไม่ได้ตั้งค่า API Key';
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`;
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
 
-    const body: GeminiRequest = {
-      contents: [
+    const body: GroqRequest = {
+      model: 'llama-3.3-70b-versatile',
+      messages: [
         {
-          parts: [
-            {
-              text: prompt,
-            },
-          ],
+          role: 'user',
+          content: prompt,
         },
       ],
+      temperature: 0.3,
     };
 
     try {
@@ -62,6 +60,7 @@ export class GeminiService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(body),
       });
@@ -69,7 +68,7 @@ export class GeminiService {
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(
-          `Gemini API error status ${response.status}: ${errorText}`,
+          `Groq API error status ${response.status}: ${errorText}`,
         );
 
         try {
@@ -77,7 +76,7 @@ export class GeminiService {
           const apiMessage = errObj?.error?.message;
           if (apiMessage) {
             throw new InternalServerErrorException(
-              `Gemini API Error: ${apiMessage}`,
+              `Groq API Error: ${apiMessage}`,
             );
           }
         } catch (e) {
@@ -85,20 +84,20 @@ export class GeminiService {
         }
 
         throw new InternalServerErrorException(
-          `การติดต่อกับ Gemini API ขัดข้อง (Status ${response.status})`,
+          `การติดต่อกับ Groq API ขัดข้อง (Status ${response.status})`,
         );
       }
 
-      const data = (await response.json()) as GeminiResponse;
+      const data = (await response.json()) as GroqResponse;
 
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const text = data.choices?.[0]?.message?.content;
       if (!text) {
         this.logger.error(
-          'Gemini API response format is invalid or empty',
+          'Groq API response format is invalid or empty',
           JSON.stringify(data),
         );
         throw new InternalServerErrorException(
-          'ผลลัพธ์จาก Gemini API ไม่ถูกต้อง',
+          'ผลลัพธ์จาก Groq API ไม่ถูกต้อง',
         );
       }
 
@@ -108,7 +107,7 @@ export class GeminiService {
         throw error;
       }
       this.logger.error(
-        'Failed to generate content from Gemini API',
+        'Failed to generate content from Groq API',
         error instanceof Error ? error.stack : String(error),
       );
       throw new InternalServerErrorException(
