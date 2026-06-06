@@ -29,6 +29,7 @@ import { StandardDetail } from './entities/standard-detail.entity.js';
 import { Hospital } from '../hospital/entities/hospital.entity.js';
 import { Section } from '../section/entities/section.entity.js';
 import { UserSpecialty } from '../user/user-specialty.entity.js';
+import { GeminiService } from '../gemini/gemini.service.js';
 
 @Injectable()
 export class TaskService {
@@ -52,6 +53,7 @@ export class TaskService {
     @InjectRepository(StandardDetail)
     private readonly standardDetailRepo: Repository<StandardDetail>,
     private readonly dataSource: DataSource,
+    private readonly geminiService: GeminiService,
   ) {}
 
   async findAll(): Promise<Task[]> {
@@ -814,5 +816,89 @@ export class TaskService {
     });
 
     return { message: 'Seed data generated successfully for June 2026!' };
+  }
+
+  async analyzeScheduleForMonth(
+    month: number,
+    year: number,
+  ): Promise<{ analysis: string }> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const tasks = await this.taskRepo
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.equipment', 'equipment')
+      .leftJoinAndSelect('equipment.section', 'section')
+      .leftJoinAndSelect('task.technician', 'technician')
+      .where(
+        new Brackets((qb) => {
+          qb.where(
+            'equipment.calibration_due_date BETWEEN :startDate AND :endDate',
+            { startDate, endDate },
+          ).orWhere(
+            'equipment.calibration_due_date IS NULL AND task.createdAt BETWEEN :startDate AND :endDate',
+            { startDate, endDate },
+          );
+        }),
+      )
+      .getMany();
+
+    if (tasks.length === 0) {
+      return {
+        analysis: 'ไม่มีรายการงานสอบเทียบในเดือนและปีที่เลือก จึงไม่มีข้อมูลสำหรับการวิเคราะห์แผนงาน',
+      };
+    }
+
+    const totalTasks = tasks.length;
+    const unassignedCount = tasks.filter((t) => !t.technician_id).length;
+
+    const statusCounts: Record<string, number> = {};
+    const techWorkloads: Record<string, number> = {};
+    const sectionWorkloads: Record<string, number> = {};
+    const dayWorkloads: Record<number, number> = {};
+
+    for (const task of tasks) {
+      const status = task.status || 'Unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+      const techName = task.technician?.name || 'ยังไม่ได้มอบหมาย';
+      techWorkloads[techName] = (techWorkloads[techName] || 0) + 1;
+
+      const sectionName = task.equipment?.section?.name || 'ไม่มีแผนก';
+      sectionWorkloads[sectionName] = (sectionWorkloads[sectionName] || 0) + 1;
+
+      const date = task.equipment?.calibration_due_date;
+      if (date) {
+        const day = new Date(date).getDate();
+        dayWorkloads[day] = (dayWorkloads[day] || 0) + 1;
+      }
+    }
+
+    const sortedDays = Object.entries(dayWorkloads)
+      .map(([day, count]) => ({ day: Number(day), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    const prompt = `คุณคือ AI ผู้ช่วยหัวหน้าแผนกตรวจสอบตารางงานสอบเทียบเครื่องมือแพทย์ในโรงพยาบาล
+หน้าที่ของคุณคือวิเคราะห์ข้อมูลสถิติแผนงานสอบเทียบประจำเดือน ${month}/${year} และเขียนบทวิเคราะห์เป็นภาษาไทยในรูปแบบ Markdown (.md) ที่กระชับ ได้ใจความ และเป็นมืออาชีพตามสไตล์ Clean Industrial (เน้นข้อมูลจริง ห้ามใช้สัญลักษณ์หรืออิโมจิใด ๆ ในบทวิเคราะห์เด็ดขาด เช่น 💡, ⚠️, ✅ หรืออื่น ๆ เพื่อให้รายงานตารางงานดูสะอาดตาและเป็นทางการ)
+
+ข้อมูลดิบของตารางงานประจำเดือน:
+- จำนวนงานสอบเทียบทั้งหมด: ${totalTasks} งาน
+- จำนวนงานที่ยังไม่ได้มอบหมายช่าง: ${unassignedCount} งาน
+- สถานะงาน: ${JSON.stringify(statusCounts)}
+- ภาระงานรายช่าง (จำนวนงานที่ช่างแต่ละคนได้รับ): ${JSON.stringify(techWorkloads)}
+- ภาระงานรายแผนก (จำนวนงานของแต่ละแผนก): ${JSON.stringify(sectionWorkloads)}
+- วันที่งานกระจุกตัวหนาแน่นที่สุด (Top Busy Days): ${JSON.stringify(sortedDays)}
+
+คำแนะนำในการเขียนสรุป:
+1. วิเคราะห์ความสมดุลของภาระงานรายช่าง (Workload Balance): มีช่างคนไหนได้งานเยอะเกินไป (เช่น เกิน 25 งานต่อเดือน) หรือน้อยเกินไปหรือไม่ และให้คำแนะนำ
+2. วิเคราะห์ความคุ้มค่าของการทำงาน (Section Continuity): มีงานแผนกไหนกระจุกตัว และการมอบหมายช่างเป็นอย่างไร (เช่น การมอบหมายให้ช่างคนเดียวกันในแผนกเดียวกันเพื่อลดการสลับพื้นที่ทำงาน)
+3. วิเคราะห์ความเสี่ยงรายวัน (Daily Concentration): มีวันไหนงานแน่นเกินไปที่ช่างจะทำไหวหรือไม่ (เช่น วันไหนงานเกิน 10 งานสำหรับช่างทั้งหมด)
+4. สรุปภาพรวมสั้นๆ ว่าตารางนี้พร้อมสำหรับเผยแพร่ (Publish) หรือควรมีการปรับปรุงเปลี่ยนวัน/เปลี่ยนช่างก่อน
+
+เขียนบทวิเคราะห์ทั้งหมดในภาษาไทย โดยไม่ต้องมีคำเกริ่นนำหรือคำส่งท้ายยาว ๆ ให้แสดงผลเป็นหัวข้อ Markdown ที่พร้อมเรนเดอร์ใน UI ทันที`;
+
+    const analysis = await this.geminiService.generateContent(prompt);
+    return { analysis };
   }
 }

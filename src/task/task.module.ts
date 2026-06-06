@@ -12,6 +12,7 @@ import { User } from '../user/user.entity.js';
 import { EquipmentModule } from '../equipment/equipment.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { StandardDetail } from './entities/standard-detail.entity.js';
+import { GeminiModule } from '../gemini/gemini.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { StandardDetail } from './entities/standard-detail.entity.js';
     ]),
     EquipmentModule,
     StorageModule,
+    GeminiModule,
   ],
   controllers: [TaskController],
   providers: [TaskService],

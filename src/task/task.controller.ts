@@ -127,4 +127,11 @@ export class TaskController {
   reschedule(@Body() dto: RescheduleTasksDto) {
     return this.taskService.rescheduleTasksToDate(dto.taskIds, dto.newDate);
   }
+
+  @Post('schedule/analyze')
+  @ApiOperation({ summary: 'วิเคราะห์และสรุปแผนงานสอบเทียบโดย AI' })
+  @ApiResponse({ status: 200, description: 'บทวิเคราะห์สรุปแผนงานในรูปแบบ Markdown' })
+  analyzeSchedule(@Body() dto: AutoAssignDto) {
+    return this.taskService.analyzeScheduleForMonth(dto.month, dto.year);
+  }
 }
