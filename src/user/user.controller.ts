@@ -187,8 +187,9 @@ export class UserController {
   @Delete(':id')
   @ApiOperation({ summary: 'ลบผู้ใช้' })
   @ApiParam({ name: 'id', type: Number, description: 'ID ของผู้ใช้' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.userService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.userService.remove(id);
+    return { success: true };
   }
 
   @Get(':id/specialties')

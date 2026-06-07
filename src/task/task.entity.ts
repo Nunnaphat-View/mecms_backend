@@ -64,14 +64,14 @@ export class Task {
   @Column({ type: 'int', nullable: true })
   technician_id: number;
 
-  @ManyToOne(() => User, { nullable: true, eager: false })
+  @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'technician_id' })
   technician: User;
 
   @Column({ type: 'int', nullable: true })
   approver_id: number;
 
-  @ManyToOne(() => User, { nullable: true, eager: false })
+  @ManyToOne(() => User, { nullable: true, eager: false, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'approver_id' })
   approver: User;
 
@@ -103,6 +103,9 @@ export class Task {
 
   @Column({ type: 'timestamp', nullable: true })
   approvedAt: Date;
+
+  @Column({ type: 'date', nullable: true })
+  scheduled_date: Date;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   path_pdf_cer: string;

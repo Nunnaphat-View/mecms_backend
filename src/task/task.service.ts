@@ -453,10 +453,8 @@ export class TaskService {
 
     await this.dataSource.transaction(async (entityManager) => {
       for (const task of tasks) {
-        if (task.equipment) {
-          task.equipment.calibration_due_date = targetDate;
-          await entityManager.save(Equipment, task.equipment);
-        }
+        task.scheduled_date = targetDate;
+        await entityManager.save(Task, task);
       }
     });
 
@@ -575,38 +573,29 @@ export class TaskService {
       assignTask(task);
     }
 
-    // Distribute tasks across month days (grouping tasks in same section to the same day)
+    // Distribute tasks across month days (evenly spreading out the days within the month)
     const daysInMonth = new Date(year, month, 0).getDate();
-    let dayCounter = 1;
 
+    // Combine all tasks ordered by section grouping to maintain some adjacency
+    const allSortedTasks: Task[] = [];
     for (const secId of sortedSectionIds) {
-      const groupTasks = sectionGroups[secId];
-      for (const task of groupTasks) {
-        if (task.equipment) {
-          const targetDay = dayCounter;
-          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
-          task.equipment.calibration_due_date = new Date(dateStr);
-        }
-      }
-      dayCounter = (dayCounter % daysInMonth) + 1;
+      allSortedTasks.push(...sectionGroups[secId]);
     }
+    allSortedTasks.push(...noSectionTasks);
 
-    for (const task of noSectionTasks) {
-      if (task.equipment) {
-        const targetDay = dayCounter;
-        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
-        task.equipment.calibration_due_date = new Date(dateStr);
-        dayCounter = (dayCounter % daysInMonth) + 1;
-      }
+    const totalTasks = allSortedTasks.length;
+    for (let i = 0; i < totalTasks; i++) {
+      const task = allSortedTasks[i];
+      // Distribute day uniformly between 1 and daysInMonth
+      const targetDay = Math.floor((i / totalTasks) * daysInMonth) + 1;
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+      task.scheduled_date = new Date(dateStr);
     }
 
     // Save in transaction
     await this.dataSource.transaction(async (entityManager) => {
       for (const task of tasks) {
         await entityManager.save(Task, task);
-        if (task.equipment) {
-          await entityManager.save(Equipment, task.equipment);
-        }
       }
     });
 
@@ -832,13 +821,18 @@ export class TaskService {
       .leftJoinAndSelect('task.technician', 'technician')
       .where(
         new Brackets((qb) => {
-          qb.where(
-            'equipment.calibration_due_date BETWEEN :startDate AND :endDate',
-            { startDate, endDate },
-          ).orWhere(
-            'equipment.calibration_due_date IS NULL AND task.createdAt BETWEEN :startDate AND :endDate',
-            { startDate, endDate },
-          );
+          qb.where('task.scheduled_date BETWEEN :startDate AND :endDate', {
+            startDate,
+            endDate,
+          })
+            .orWhere(
+              'task.scheduled_date IS NULL AND equipment.calibration_due_date BETWEEN :startDate AND :endDate',
+              { startDate, endDate },
+            )
+            .orWhere(
+              'task.scheduled_date IS NULL AND equipment.calibration_due_date IS NULL AND task.createdAt BETWEEN :startDate AND :endDate',
+              { startDate, endDate },
+            );
         }),
       )
       .getMany();
@@ -858,6 +852,9 @@ export class TaskService {
     const sectionWorkloads: Record<string, number> = {};
     const dayWorkloads: Record<number, number> = {};
 
+    let overdueCount = 0;
+    const overdueDetails: string[] = [];
+
     for (const task of tasks) {
       const status = task.status || 'Unknown';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -868,10 +865,34 @@ export class TaskService {
       const sectionName = task.equipment?.section?.name || 'ไม่มีแผนก';
       sectionWorkloads[sectionName] = (sectionWorkloads[sectionName] || 0) + 1;
 
-      const date = task.equipment?.calibration_due_date;
+      const date =
+        task.scheduled_date ||
+        task.equipment?.calibration_due_date ||
+        task.createdAt;
       if (date) {
         const day = new Date(date).getDate();
         dayWorkloads[day] = (dayWorkloads[day] || 0) + 1;
+      }
+
+      // Calculate if the scheduled date is past the equipment due date (overdue)
+      const scheduled = task.scheduled_date;
+      const due = task.equipment?.calibration_due_date;
+      if (scheduled && due) {
+        const scheduledTime = new Date(scheduled).setHours(0, 0, 0, 0);
+        const dueTime = new Date(due).setHours(0, 0, 0, 0);
+        if (scheduledTime > dueTime) {
+          overdueCount++;
+          const diffDays = Math.ceil(
+            (scheduledTime - dueTime) / (1000 * 60 * 60 * 24),
+          );
+          const toolName = task.equipment?.tool_name || 'เครื่องมือแพทย์';
+          const assetCode = task.equipment?.asset_code || '-';
+          const dueStr = new Date(due).toISOString().split('T')[0];
+          const scheduledStr = new Date(scheduled).toISOString().split('T')[0];
+          overdueDetails.push(
+            `- ${toolName} (รหัส: ${assetCode}) ครบกำหนด: ${dueStr}, นัดหมายทำงาน: ${scheduledStr} (ล่าช้า ${diffDays} วัน)`,
+          );
+        }
       }
     }
 
@@ -890,12 +911,16 @@ export class TaskService {
 - ภาระงานรายช่าง (จำนวนงานที่ช่างแต่ละคนได้รับ): ${JSON.stringify(techWorkloads)}
 - ภาระงานรายแผนก (จำนวนงานของแต่ละแผนก): ${JSON.stringify(sectionWorkloads)}
 - วันที่งานกระจุกตัวหนาแน่นที่สุด (Top Busy Days): ${JSON.stringify(sortedDays)}
+- จำนวนงานที่นัดหมายเกินวันครบกำหนดสอบเทียบเดิม (Overdue): ${overdueCount} งาน
+- รายละเอียดงานที่ล่าช้าเกินกำหนด (ถ้ามี): 
+${overdueDetails.length > 0 ? overdueDetails.join('\n') : 'ไม่มีงานล่าช้ากว่ากำหนด'}
 
 คำแนะนำในการเขียนสรุป:
 1. วิเคราะห์ความสมดุลของภาระงานรายช่าง (Workload Balance): มีช่างคนไหนได้งานเยอะเกินไป (เช่น เกิน 25 งานต่อเดือน) หรือน้อยเกินไปหรือไม่ และให้คำแนะนำ
 2. วิเคราะห์ความคุ้มค่าของการทำงาน (Section Continuity): มีงานแผนกไหนกระจุกตัว และการมอบหมายช่างเป็นอย่างไร (เช่น การมอบหมายให้ช่างคนเดียวกันในแผนกเดียวกันเพื่อลดการสลับพื้นที่ทำงาน)
 3. วิเคราะห์ความเสี่ยงรายวัน (Daily Concentration): มีวันไหนงานแน่นเกินไปที่ช่างจะทำไหวหรือไม่ (เช่น วันไหนงานเกิน 10 งานสำหรับช่างทั้งหมด)
-4. สรุปภาพรวมสั้นๆ ว่าตารางนี้พร้อมสำหรับเผยแพร่ (Publish) หรือควรมีการปรับปรุงเปลี่ยนวัน/เปลี่ยนช่างก่อน
+4. วิเคราะห์ความล่าช้าการจัดตารางงาน (Overdue Calibration): มีงานกี่งานที่นัดทำงานเกินวันครบกำหนดสอบเทียบจริงของเครื่องมือแพทย์ (ระบุเครื่องมือที่พบปัญหา และจำนวนวันที่ช้ากว่ากำหนด) และวิเคราะห์ความเสี่ยงของเครื่องมือเหล่านั้น
+5. สรุปภาพรวมสั้นๆ ว่าตารางนี้พร้อมสำหรับเผยแพร่ (Publish) หรือควรมีการปรับปรุงเปลี่ยนวัน/เปลี่ยนช่างก่อน
 
 เขียนบทวิเคราะห์ทั้งหมดในภาษาไทย โดยไม่ต้องมีคำเกริ่นนำหรือคำส่งท้ายยาว ๆ ให้แสดงผลเป็นหัวข้อ Markdown ที่พร้อมเรนเดอร์ใน UI ทันที`;
 

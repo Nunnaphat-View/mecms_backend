@@ -93,7 +93,8 @@ export class EquipmentController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'ลบสำเร็จ' })
   @ApiResponse({ status: 404, description: 'ไม่พบเครื่องมือ' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.equipmentService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.equipmentService.remove(id);
+    return { success: true };
   }
 }
