@@ -13,6 +13,7 @@ import { EquipmentModule } from '../equipment/equipment.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { StandardDetail } from './entities/standard-detail.entity.js';
 import { GeminiModule } from '../gemini/gemini.module.js';
+import { TaskCertificate } from './entities/task-certificate.entity.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { GeminiModule } from '../gemini/gemini.module.js';
       SpecificParameter,
       User,
       StandardDetail,
+      TaskCertificate,
     ]),
     EquipmentModule,
     StorageModule,

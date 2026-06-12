@@ -29,6 +29,7 @@ import { StandardDetail } from './entities/standard-detail.entity.js';
 import { Hospital } from '../hospital/entities/hospital.entity.js';
 import { Section } from '../section/entities/section.entity.js';
 import { UserSpecialty } from '../user/user-specialty.entity.js';
+import { TaskCertificate } from './entities/task-certificate.entity.js';
 import { GeminiService } from '../gemini/gemini.service.js';
 
 @Injectable()
@@ -52,6 +53,8 @@ export class TaskService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(StandardDetail)
     private readonly standardDetailRepo: Repository<StandardDetail>,
+    @InjectRepository(TaskCertificate)
+    private readonly taskCertificateRepo: Repository<TaskCertificate>,
     private readonly dataSource: DataSource,
     private readonly geminiService: GeminiService,
   ) {}
@@ -76,6 +79,7 @@ export class TaskService {
         'checklistRemarks',
         'checklistRemarks.category',
         'specificParameters',
+        'certificate',
       ],
       order: { id: 'DESC' },
     });
@@ -83,6 +87,7 @@ export class TaskService {
       task.standardTools = task.standardDetails
         ? task.standardDetails.map((sd) => sd.standardTool).filter(Boolean)
         : [];
+      this.mapCertificateData(task);
       return task;
     });
   }
@@ -108,12 +113,14 @@ export class TaskService {
         'checklistRemarks',
         'checklistRemarks.category',
         'specificParameters',
+        'certificate',
       ],
     });
     if (!task) throw new NotFoundException(`Task #${id} not found`);
     task.standardTools = task.standardDetails
       ? task.standardDetails.map((sd) => sd.standardTool).filter(Boolean)
       : [];
+    this.mapCertificateData(task);
     return task;
   }
 
@@ -272,32 +279,31 @@ export class TaskService {
         }
       }
 
-      // Create unified snapshot in JSONB while preserving existing fields (like pmChecklist)
+      // Create unified snapshot in TaskCertificate table
       const targetHospital =
         task.technician?.hospital || task.equipment?.section?.hospital;
-      const currentCertData = task.certificate_data || {};
-      task.certificate_data = {
-        ...currentCertData,
-        hospital: targetHospital
-          ? {
-              name: targetHospital.name,
-              logoUrl: targetHospital.logoUrl,
-              address: targetHospital.address,
-              district: targetHospital.district,
-              province: targetHospital.province,
-              zipCode: targetHospital.zipCode,
-            }
-          : null,
-        department: {
-          name: task.equipment?.section?.name || null,
-        },
-        technician: task.technician
-          ? {
-              name: task.technician.name || '',
-              signatureUrl: task.technician.signatureUrl,
-            }
-          : null,
-      };
+
+      let cert = await this.taskCertificateRepo.findOne({
+        where: { task_id: id },
+      });
+      if (!cert) {
+        cert = this.taskCertificateRepo.create({ task_id: id });
+      }
+
+      if (targetHospital) {
+        cert.hospital_name = targetHospital.name;
+        cert.hospital_logo_url = targetHospital.logoUrl;
+        cert.hospital_address = targetHospital.address;
+        cert.hospital_district = targetHospital.district;
+        cert.hospital_province = targetHospital.province;
+        cert.hospital_zip_code = targetHospital.zipCode;
+      }
+      cert.department_name = task.equipment?.section?.name || null;
+      if (task.technician) {
+        cert.technician_name = task.technician.name || '';
+        cert.technician_signature_url = task.technician.signatureUrl;
+      }
+      await this.taskCertificateRepo.save(cert);
 
       task.overall_result = dto.overall_result;
       task.status = dto.status || 'PendingApproval';
@@ -311,6 +317,8 @@ export class TaskService {
       }
 
       const finalTask = await this.taskRepo.save(task);
+      finalTask.certificate = cert;
+      this.mapCertificateData(finalTask);
 
       if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
         finalTask.standardTools = await this.standardToolRepo.find({
@@ -338,47 +346,44 @@ export class TaskService {
       task.approvedAt = new Date();
       task.remarks = dto.remarks;
 
-      // Freeze approver info into certificate_data
+      // Freeze approver info into task_certificates table
       const approverFetch = await this.userRepo.findOne({
         where: { id: dto.approver_id },
       });
 
-      const currentCertData = { ...(task.certificate_data || {}) };
+      let cert = task.certificate;
+      if (!cert) {
+        cert = this.taskCertificateRepo.create({ task_id: id });
+      }
 
       if (approverFetch) {
-        currentCertData.approver = {
-          name: approverFetch.name,
-          signatureUrl: approverFetch.signatureUrl,
-        };
+        cert.approver_name = approverFetch.name;
+        cert.approver_signature_url = approverFetch.signatureUrl;
       }
 
       // Safety: also freeze technician and hospital info if missing (for legacy tasks being approved now)
-      if (!currentCertData.technician && task.technician) {
-        currentCertData.technician = {
-          name: task.technician.name,
-          signatureUrl: task.technician.signatureUrl,
-        };
+      if (!cert.technician_name && task.technician) {
+        cert.technician_name = task.technician.name;
+        cert.technician_signature_url = task.technician.signatureUrl;
       }
 
-      if (!currentCertData.hospital) {
+      if (!cert.hospital_name) {
         const targetHospital =
           task.technician?.hospital || task.equipment?.section?.hospital;
         if (targetHospital) {
-          currentCertData.hospital = {
-            name: targetHospital.name,
-            logoUrl: targetHospital.logoUrl,
-            address: targetHospital.address,
-            district: targetHospital.district,
-            province: targetHospital.province,
-            zipCode: targetHospital.zipCode,
-          };
+          cert.hospital_name = targetHospital.name;
+          cert.hospital_logo_url = targetHospital.logoUrl;
+          cert.hospital_address = targetHospital.address;
+          cert.hospital_district = targetHospital.district;
+          cert.hospital_province = targetHospital.province;
+          cert.hospital_zip_code = targetHospital.zipCode;
         }
         if (task.equipment?.section) {
-          currentCertData.department = { name: task.equipment.section.name };
+          cert.department_name = task.equipment.section.name;
         }
       }
 
-      task.certificate_data = currentCertData;
+      task.certificate = await this.taskCertificateRepo.save(cert);
 
       if (task.equipment_id) {
         const equipment = await this.equipmentService.findOne(
@@ -425,6 +430,7 @@ export class TaskService {
     }
 
     const savedTask = await this.taskRepo.save(task);
+    this.mapCertificateData(savedTask);
 
     // Notify technician about the decision
     return savedTask;
@@ -805,6 +811,42 @@ export class TaskService {
     });
 
     return { message: 'Seed data generated successfully for June 2026!' };
+  }
+
+  private mapCertificateData(task: Task): void {
+    if (!task) return;
+    if (!task.certificate) {
+      task.certificate_data = null;
+      return;
+    }
+    task.certificate_data = {
+      hospital: task.certificate.hospital_name
+        ? {
+            name: task.certificate.hospital_name,
+            logoUrl: task.certificate.hospital_logo_url,
+            address: task.certificate.hospital_address,
+            district: task.certificate.hospital_district,
+            province: task.certificate.hospital_province,
+            zipCode: task.certificate.hospital_zip_code,
+          }
+        : null,
+      department: {
+        name: task.certificate.department_name || null,
+      },
+      technician: task.certificate.technician_name
+        ? {
+            name: task.certificate.technician_name,
+            signatureUrl: task.certificate.technician_signature_url,
+          }
+        : null,
+      approver: task.certificate.approver_name
+        ? {
+            name: task.certificate.approver_name,
+            signatureUrl: task.certificate.approver_signature_url,
+          }
+        : null,
+      pmChecklist: task.certificate.pm_checklist || null,
+    };
   }
 
   async analyzeScheduleForMonth(

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -13,6 +12,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto.js';
 import { UpdateItemDto } from './dto/update-item.dto.js';
 import { Equipment, EquipmentStatus } from '../equipment/equipment.entity.js';
 import { Task, TaskStatus } from '../task/task.entity.js';
+import { TaskCertificate } from '../task/entities/task-certificate.entity.js';
 
 @Injectable()
 export class PmChecklistService {
@@ -56,16 +56,19 @@ export class PmChecklistService {
         itemMap.set(item.id, item);
       }
 
+      // Load or create certificate record
+      let cert = await manager.findOne(TaskCertificate, {
+        where: { task_id: dto.task_id },
+      });
+      if (!cert) {
+        cert = manager.create(TaskCertificate, { task_id: dto.task_id });
+      }
+
       // Freeze technician info if not already frozen or on every re-save
       if (task.technician) {
         const tech = task.technician;
-        task.certificate_data = {
-          ...task.certificate_data,
-          technician: {
-            name: tech.name,
-            signatureUrl: tech.signatureUrl,
-          },
-        };
+        cert.technician_name = tech.name;
+        cert.technician_signature_url = tech.signatureUrl;
         console.log(`[DEBUG-PM] Frozen Tech: ${tech.name}`);
       }
 
@@ -83,7 +86,7 @@ export class PmChecklistService {
       );
       await manager.save(PmChecklistResult, results);
 
-      // Create PM checklist snapshot inside task.certificate_data.pmChecklist
+      // Create PM checklist snapshot
       const snapshot = dto.results.map((r) => {
         const dbItem = itemMap.get(r.item_id);
         return {
@@ -95,10 +98,8 @@ export class PmChecklistService {
         };
       });
 
-      task.certificate_data = {
-        ...task.certificate_data,
-        pmChecklist: snapshot,
-      };
+      cert.pm_checklist = snapshot;
+      await manager.save(TaskCertificate, cert);
 
       // Insert remarks (skip empty text)
       const remarks = dto.remarks

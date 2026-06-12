@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  OneToOne,
   CreateDateColumn,
 } from 'typeorm';
 import { User } from '../user/user.entity.js';
@@ -17,6 +18,8 @@ import { PmChecklistResult } from '../pm-checklist/entities/pm-checklist-result.
 import { PmCategoryRemark } from '../pm-checklist/entities/pm-category-remark.entity.js';
 import { SpecificParameter } from './entities/specific-parameter.entity.js';
 import { StandardDetail } from './entities/standard-detail.entity.js';
+
+import { TaskCertificate } from './entities/task-certificate.entity.js';
 
 export type TaskStatus =
   | 'Pending'
@@ -110,7 +113,9 @@ export class Task {
   @Column({ type: 'varchar', length: 500, nullable: true })
   path_pdf_cer: string;
 
-  // Unified JSONB Snapshot for Certificates
-  @Column({ type: 'jsonb', nullable: true })
-  certificate_data: any;
+  @OneToOne(() => TaskCertificate, (cert) => cert.task, { cascade: true })
+  certificate: TaskCertificate;
+
+  // Unified JSONB Snapshot for Certificates (Virtual property - populated dynamically)
+  certificate_data?: any;
 }
