@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { readFileSync } from 'fs';
 import { join } from 'path';
