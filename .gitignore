@@ -74,6 +74,7 @@ GEMINI.md
 backup.sql
 submit_debug.log
 *.sql
+!src/db/migrations/**/*.sql
 
 *.agents/
 *.agent/
