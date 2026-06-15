@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Client, TextMessage, FlexMessage, FlexContainer } from '@line/bot-sdk';
+import {
+  Client,
+  TextMessage,
+  FlexMessage,
+  FlexContainer,
+  Profile,
+} from '@line/bot-sdk';
 
 @Injectable()
 export class LineService {
@@ -23,6 +29,12 @@ export class LineService {
         'LINE Messaging API credentials not found in environment variables',
       );
     }
+  }
+
+  getFrontendUrl(): string {
+    return (
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173'
+    );
   }
 
   async pushMessage(to: string, text: string) {
@@ -97,6 +109,40 @@ export class LineService {
     } catch (error) {
       this.logger.error(
         `Failed to send reply message for token ${replyToken}`,
+        error,
+      );
+    }
+  }
+
+  async getUserProfile(userId: string): Promise<Profile | null> {
+    if (!this.client) return null;
+    try {
+      return await this.client.getProfile(userId);
+    } catch (error) {
+      this.logger.error(`Failed to get LINE profile for user ${userId}`, error);
+      return null;
+    }
+  }
+
+  async replyFlexMessage(
+    replyToken: string,
+    altText: string,
+    contents: FlexContainer,
+  ): Promise<void> {
+    if (!this.client) return;
+    try {
+      const message: FlexMessage = {
+        type: 'flex',
+        altText,
+        contents,
+      };
+      await this.client.replyMessage(replyToken, message);
+      this.logger.log(
+        `Successfully sent reply flex message for token ${replyToken}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send reply flex message for token ${replyToken}`,
         error,
       );
     }

@@ -5,8 +5,8 @@ export class StandardTool {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
-  tool_name: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  tool_name: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   asset_code: string;

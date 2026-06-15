@@ -6,6 +6,7 @@ import { Equipment } from '../equipment/equipment.entity.js';
 import { Task } from '../task/task.entity.js';
 import { LineService } from '../line/line.service.js';
 import { FlexContainer } from '@line/bot-sdk';
+import { NotificationLog } from './notification-log.entity.js';
 
 @Injectable()
 export class NotificationService {
@@ -16,10 +17,12 @@ export class NotificationService {
     private readonly equipmentRepo: Repository<Equipment>,
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
+    @InjectRepository(NotificationLog)
+    private readonly notificationLogRepo: Repository<NotificationLog>,
     private readonly lineService: LineService,
   ) {}
 
-  @Cron('0 11 * * *')
+  @Cron('30 15 * * *')
   async handleCalibrationDueNotifications() {
     this.logger.log('Running scheduled calibration due notifications check...');
 
@@ -48,6 +51,28 @@ export class NotificationService {
     );
 
     for (const eq of dueEquipments) {
+      // Check if already sent in the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const alreadySent = await this.notificationLogRepo.findOne({
+        where: {
+          notificationType: 'CALIBRATION_DUE_7_DAYS',
+          equipmentId: eq.id,
+          status: 'sent',
+          createdAt: Raw((alias) => `${alias} >= :thirtyDaysAgo`, {
+            thirtyDaysAgo,
+          }),
+        },
+      });
+
+      if (alreadySent) {
+        this.logger.log(
+          `Notification 'CALIBRATION_DUE_7_DAYS' already sent for equipment ${eq.tool_name} (ID: ${eq.id}) on ${alreadySent.sentAt ? alreadySent.sentAt.toISOString() : 'N/A'}. Skipping.`,
+        );
+        continue;
+      }
+
       // Find the most recent task for this equipment to identify the technician
       const lastTask = await this.taskRepo.findOne({
         where: { equipment_id: eq.id },
@@ -210,6 +235,19 @@ export class NotificationService {
 
       const altText = `แจ้งเตือน: เครื่องมือ ${eq.tool_name} ใกล้ครบกำหนดสอบเทียบ`;
 
+      // Log the notification as pending
+      const log = this.notificationLogRepo.create({
+        channel: 'line',
+        notificationType: 'CALIBRATION_DUE_7_DAYS',
+        equipmentId: eq.id,
+        recipientId: lastTask?.technician?.id || null,
+        status: 'pending',
+      });
+      await this.notificationLogRepo.save(log);
+
+      let sendSuccess = false;
+      let errorMessage: string | null = null;
+
       if (lastTask?.technician?.lineUserId) {
         // Notify the specific technician
         try {
@@ -219,7 +257,9 @@ export class NotificationService {
             flexContent,
           );
           this.logger.log(`Notified technician for equipment ${eq.tool_name}`);
-        } catch (error) {
+          sendSuccess = true;
+        } catch (error: unknown) {
+          errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.error(
             `Failed to notify technician for equipment ${eq.id}`,
             error,
@@ -232,13 +272,21 @@ export class NotificationService {
           this.logger.log(
             `Broadcasted notification for equipment ${eq.tool_name}`,
           );
-        } catch (error) {
+          sendSuccess = true;
+        } catch (error: unknown) {
+          errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.error(
             `Failed to broadcast notification for equipment ${eq.id}`,
             error,
           );
         }
       }
+
+      // Update log status
+      log.status = sendSuccess ? 'sent' : 'failed';
+      log.sentAt = sendSuccess ? new Date() : null;
+      log.errorMessage = errorMessage;
+      await this.notificationLogRepo.save(log);
     }
   }
 }

@@ -5,9 +5,13 @@ import { NotificationController } from './notification.controller.js';
 import { Equipment } from '../equipment/equipment.entity.js';
 import { Task } from '../task/task.entity.js';
 import { LineModule } from '../line/line.module.js';
+import { NotificationLog } from './notification-log.entity.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Equipment, Task]), LineModule],
+  imports: [
+    TypeOrmModule.forFeature([Equipment, Task, NotificationLog]),
+    LineModule,
+  ],
   providers: [NotificationService],
   controllers: [NotificationController],
 })
