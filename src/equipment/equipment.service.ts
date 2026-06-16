@@ -76,7 +76,10 @@ export class EquipmentService {
     };
   }
 
-  async create(dto: CreateEquipmentDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Equipment> {
+  async create(
+    dto: CreateEquipmentDto,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
+  ): Promise<Equipment> {
     const equipment = this.equipmentRepo.create(dto);
     const saved = await this.equipmentRepo.save(equipment);
     const result = await this.findOne(saved.id);
@@ -97,7 +100,11 @@ export class EquipmentService {
     return result as Equipment;
   }
 
-  async update(id: number, dto: UpdateEquipmentDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Equipment> {
+  async update(
+    id: number,
+    dto: UpdateEquipmentDto,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
+  ): Promise<Equipment> {
     const equipment = await this.findOne(id);
     if (!equipment) {
       throw new NotFoundException(`Equipment #${id} not found`);
@@ -133,7 +140,10 @@ export class EquipmentService {
     return result as Equipment;
   }
 
-  async remove(id: number, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<void> {
+  async remove(
+    id: number,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
+  ): Promise<void> {
     const equipment = await this.findOne(id);
     if (!equipment) {
       throw new NotFoundException(`Equipment #${id} not found`);

@@ -129,7 +129,10 @@ export class TaskService {
     return task;
   }
 
-  async create(dto: CreateTaskDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Task> {
+  async create(
+    dto: CreateTaskDto,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
+  ): Promise<Task> {
     const year = new Date().getFullYear();
 
     // ค้นหา cal_no ล่าสุดของปีนี้
@@ -173,7 +176,11 @@ export class TaskService {
     return saved;
   }
 
-  async submitTask(id: number, dto: SubmitTaskDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Task> {
+  async submitTask(
+    id: number,
+    dto: SubmitTaskDto,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
+  ): Promise<Task> {
     const fs = require('fs');
     fs.appendFileSync(
       'submit_debug.log',
@@ -370,7 +377,11 @@ export class TaskService {
     }
   }
 
-  async approveTask(id: number, dto: ApproveTaskDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Task> {
+  async approveTask(
+    id: number,
+    dto: ApproveTaskDto,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
+  ): Promise<Task> {
     const task = await this.findOne(id);
     const oldValues = { ...task };
 
@@ -782,7 +793,7 @@ export class TaskService {
         sections[name] = sec;
       }
 
-       // 3. Find or create 3 technicians with specialties
+      // 3. Find or create 3 technicians with specialties
       let tech1 = await entityManager.findOne(User, {
         where: { username: 'somchai' },
       });
@@ -867,12 +878,18 @@ export class TaskService {
             where: { equipment_id: eq.id },
           });
           for (const t of oldTasks) {
-            await entityManager.delete(PmChecklistResult, { task: { id: t.id } });
-            await entityManager.delete(PmCategoryRemark, { task: { id: t.id } });
+            await entityManager.delete(PmChecklistResult, {
+              task: { id: t.id },
+            });
+            await entityManager.delete(PmCategoryRemark, {
+              task: { id: t.id },
+            });
             await entityManager.delete(Environment, { task: { id: t.id } });
             await entityManager.delete(Measurement, { task: { id: t.id } });
             await entityManager.delete(Qualitative, { task: { id: t.id } });
-            await entityManager.delete(SpecificParameter, { task: { id: t.id } });
+            await entityManager.delete(SpecificParameter, {
+              task: { id: t.id },
+            });
             await entityManager.delete(StandardDetail, { task: { id: t.id } });
             await entityManager.delete(TaskCertificate, { task: { id: t.id } });
             await entityManager.delete(Task, t.id);
@@ -890,10 +907,10 @@ export class TaskService {
 
         const year = 2026;
         const baseCount = await entityManager.count(Task, { where: {} });
-        
+
         let suffix = baseCount + 1;
         let cal_no = `CAL-${year}-${String(suffix).padStart(4, '0')}`;
-        
+
         let exists = await entityManager.findOne(Task, { where: { cal_no } });
         while (exists) {
           suffix++;

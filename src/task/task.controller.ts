@@ -68,7 +68,11 @@ export class TaskController {
 
   @Patch(':id/submit')
   @ApiOperation({ summary: 'ช่างส่งผลการสอบเทียบ' })
-  submit(@Param('id', ParseIntPipe) id: number, @Body() dto: SubmitTaskDto, @Request() req: any) {
+  submit(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SubmitTaskDto,
+    @Request() req: any,
+  ) {
     return this.taskService.submitTask(id, dto, req.user);
   }
 
@@ -118,7 +122,11 @@ export class TaskController {
     @Body() dto: AssignTechnicianDto,
     @Request() req: any,
   ) {
-    return this.taskService.assignTechnicianToTask(id, dto.technician_id, req.user);
+    return this.taskService.assignTechnicianToTask(
+      id,
+      dto.technician_id,
+      req.user,
+    );
   }
 
   @Post('seed')
@@ -131,7 +139,11 @@ export class TaskController {
   @ApiOperation({ summary: 'ย้ายวันที่สอบเทียบของกลุ่มงาน (Drag & Drop)' })
   @ApiResponse({ status: 200, description: 'อัปเดตวันสอบเทียบสำเร็จ' })
   reschedule(@Body() dto: RescheduleTasksDto, @Request() req: any) {
-    return this.taskService.rescheduleTasksToDate(dto.taskIds, dto.newDate, req.user);
+    return this.taskService.rescheduleTasksToDate(
+      dto.taskIds,
+      dto.newDate,
+      req.user,
+    );
   }
 
   @Post('schedule/analyze')

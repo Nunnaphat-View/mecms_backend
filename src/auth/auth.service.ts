@@ -19,7 +19,7 @@ export class AuthService {
   async register(registerDto: RegisterDto, ip?: string, userAgent?: string) {
     const user = await this.userService.create(registerDto);
     const payload = { sub: user.id, username: user.username };
-    
+
     // Log registration
     await this.auditLogService.createLog({
       userId: user.id,
@@ -27,7 +27,11 @@ export class AuthService {
       resourceName: 'User',
       resourceId: String(user.id),
       oldValues: null,
-      newValues: { username: user.username, email: user.email, name: user.name },
+      newValues: {
+        username: user.username,
+        email: user.email,
+        name: user.name,
+      },
       ipAddress: ip,
       userAgent,
     });
