@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
@@ -31,6 +32,9 @@ import { Section } from '../section/entities/section.entity.js';
 import { UserSpecialty } from '../user/user-specialty.entity.js';
 import { TaskCertificate } from './entities/task-certificate.entity.js';
 import { GeminiService } from '../gemini/gemini.service.js';
+import { AuditLogService } from '../audit-log/audit-log.service.js';
+import { PmChecklistResult } from '../pm-checklist/entities/pm-checklist-result.entity.js';
+import { PmCategoryRemark } from '../pm-checklist/entities/pm-category-remark.entity.js';
 
 @Injectable()
 export class TaskService {
@@ -57,6 +61,7 @@ export class TaskService {
     private readonly taskCertificateRepo: Repository<TaskCertificate>,
     private readonly dataSource: DataSource,
     private readonly geminiService: GeminiService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async findAll(): Promise<Task[]> {
@@ -124,7 +129,7 @@ export class TaskService {
     return task;
   }
 
-  async create(dto: CreateTaskDto): Promise<Task> {
+  async create(dto: CreateTaskDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Task> {
     const year = new Date().getFullYear();
 
     // ค้นหา cal_no ล่าสุดของปีนี้
@@ -152,10 +157,23 @@ export class TaskService {
     });
     const saved = await this.taskRepo.save(task);
 
+    if (currentUser) {
+      await this.auditLogService.createLog({
+        userId: currentUser.userId,
+        action: 'TASK_CREATE',
+        resourceName: 'Task',
+        resourceId: String(saved.id),
+        oldValues: null,
+        newValues: saved,
+        ipAddress: currentUser.ip,
+        userAgent: currentUser.userAgent,
+      });
+    }
+
     return saved;
   }
 
-  async submitTask(id: number, dto: SubmitTaskDto): Promise<Task> {
+  async submitTask(id: number, dto: SubmitTaskDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Task> {
     const fs = require('fs');
     fs.appendFileSync(
       'submit_debug.log',
@@ -179,6 +197,8 @@ export class TaskService {
       });
       if (!task) throw new NotFoundException(`Task #${id} not found`);
       console.log(`Task found: id=${task.id}`);
+
+      const oldValues = { ...task };
 
       // 0. Clear old data from DB
       await this.environmentRepo.delete({ task_id: id });
@@ -328,6 +348,19 @@ export class TaskService {
         finalTask.standardTools = [];
       }
 
+      if (currentUser) {
+        await this.auditLogService.createLog({
+          userId: currentUser.userId,
+          action: 'TASK_SUBMIT_RESULT',
+          resourceName: 'Task',
+          resourceId: String(id),
+          oldValues,
+          newValues: finalTask,
+          ipAddress: currentUser.ip,
+          userAgent: currentUser.userAgent,
+        });
+      }
+
       console.log('=== Task submitted successfully ===');
 
       return finalTask;
@@ -337,8 +370,9 @@ export class TaskService {
     }
   }
 
-  async approveTask(id: number, dto: ApproveTaskDto): Promise<Task> {
+  async approveTask(id: number, dto: ApproveTaskDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Task> {
     const task = await this.findOne(id);
+    const oldValues = { ...task };
 
     if (dto.decision === 'Approve') {
       task.status = 'Approved';
@@ -432,6 +466,19 @@ export class TaskService {
     const savedTask = await this.taskRepo.save(task);
     this.mapCertificateData(savedTask);
 
+    if (currentUser) {
+      await this.auditLogService.createLog({
+        userId: currentUser.userId,
+        action: dto.decision === 'Approve' ? 'TASK_APPROVE' : 'TASK_REJECT',
+        resourceName: 'Task',
+        resourceId: String(id),
+        oldValues,
+        newValues: savedTask,
+        ipAddress: currentUser.ip,
+        userAgent: currentUser.userAgent,
+      });
+    }
+
     // Notify technician about the decision
     return savedTask;
   }
@@ -445,6 +492,7 @@ export class TaskService {
   async rescheduleTasksToDate(
     taskIds: number[],
     newDate: string,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
   ): Promise<Task[]> {
     const targetDate = new Date(newDate);
 
@@ -459,8 +507,25 @@ export class TaskService {
 
     await this.dataSource.transaction(async (entityManager) => {
       for (const task of tasks) {
+        const oldValues = { ...task };
         task.scheduled_date = targetDate;
-        await entityManager.save(Task, task);
+        const saved = await entityManager.save(Task, task);
+
+        if (currentUser) {
+          await this.auditLogService.createLog(
+            {
+              userId: currentUser.userId,
+              action: 'TASK_RESCHEDULE',
+              resourceName: 'Task',
+              resourceId: String(task.id),
+              oldValues,
+              newValues: saved,
+              ipAddress: currentUser.ip,
+              userAgent: currentUser.userAgent,
+            },
+            entityManager,
+          );
+        }
       }
     });
 
@@ -649,6 +714,7 @@ export class TaskService {
   async assignTechnicianToTask(
     taskId: number,
     technicianId: number,
+    currentUser?: { userId: number; ip?: string; userAgent?: string },
   ): Promise<Task> {
     const task = await this.taskRepo.findOne({
       where: { id: taskId },
@@ -657,6 +723,8 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException(`Task #${taskId} not found`);
     }
+
+    const oldValues = { ...task };
 
     const technician = await this.userRepo.findOne({
       where: { id: technicianId, roleId: 2 },
@@ -668,7 +736,22 @@ export class TaskService {
     task.technician_id = technicianId;
     task.technician = technician;
 
-    return this.taskRepo.save(task);
+    const saved = await this.taskRepo.save(task);
+
+    if (currentUser) {
+      await this.auditLogService.createLog({
+        userId: currentUser.userId,
+        action: 'TASK_ASSIGN',
+        resourceName: 'Task',
+        resourceId: String(taskId),
+        oldValues,
+        newValues: saved,
+        ipAddress: currentUser.ip,
+        userAgent: currentUser.userAgent,
+      });
+    }
+
+    return saved;
   }
 
   async seedTestData(): Promise<{ message: string }> {
@@ -699,7 +782,7 @@ export class TaskService {
         sections[name] = sec;
       }
 
-      // 3. Find or create 3 technicians with specialties
+       // 3. Find or create 3 technicians with specialties
       let tech1 = await entityManager.findOne(User, {
         where: { username: 'somchai' },
       });
@@ -707,12 +790,12 @@ export class TaskService {
         tech1 = new User();
         tech1.username = 'somchai';
         tech1.name = 'ช่างสมชาย (Defib, Infusion)';
-        tech1.password =
-          '$2b$10$tM3V.9qjUeQWpA7e6u3RquVf2V5oN7r2g/1o2c3d4e5f6g7h8i9j'; // hashed "password"
         tech1.roleId = 2;
         tech1.hospital = hospital;
-        tech1 = await entityManager.save(User, tech1);
       }
+      tech1.password =
+        '$2b$10$RxlcBDO7uW2K1glgmJH5LefMpN8lA84L.xa.xerF82EFIIUYxoGQa'; // hashed "123456"
+      tech1 = await entityManager.save(User, tech1);
 
       let tech2 = await entityManager.findOne(User, {
         where: { username: 'somying' },
@@ -721,12 +804,12 @@ export class TaskService {
         tech2 = new User();
         tech2.username = 'somying';
         tech2.name = 'ช่างสมหญิง (ECG, Infusion)';
-        tech2.password =
-          '$2b$10$tM3V.9qjUeQWpA7e6u3RquVf2V5oN7r2g/1o2c3d4e5f6g7h8i9j';
         tech2.roleId = 2;
         tech2.hospital = hospital;
-        tech2 = await entityManager.save(User, tech2);
       }
+      tech2.password =
+        '$2b$10$RxlcBDO7uW2K1glgmJH5LefMpN8lA84L.xa.xerF82EFIIUYxoGQa'; // hashed "123456"
+      tech2 = await entityManager.save(User, tech2);
 
       let tech3 = await entityManager.findOne(User, {
         where: { username: 'somsak' },
@@ -735,12 +818,12 @@ export class TaskService {
         tech3 = new User();
         tech3.username = 'somsak';
         tech3.name = 'ช่างสมศักดิ์ (Defib, Pressure)';
-        tech3.password =
-          '$2b$10$tM3V.9qjUeQWpA7e6u3RquVf2V5oN7r2g/1o2c3d4e5f6g7h8i9j';
         tech3.roleId = 2;
         tech3.hospital = hospital;
-        tech3 = await entityManager.save(User, tech3);
       }
+      tech3.password =
+        '$2b$10$RxlcBDO7uW2K1glgmJH5LefMpN8lA84L.xa.xerF82EFIIUYxoGQa'; // hashed "123456"
+      tech3 = await entityManager.save(User, tech3);
 
       // Refresh specialties
       await entityManager.delete(UserSpecialty, { userId: tech1.id });
@@ -784,6 +867,14 @@ export class TaskService {
             where: { equipment_id: eq.id },
           });
           for (const t of oldTasks) {
+            await entityManager.delete(PmChecklistResult, { task: { id: t.id } });
+            await entityManager.delete(PmCategoryRemark, { task: { id: t.id } });
+            await entityManager.delete(Environment, { task: { id: t.id } });
+            await entityManager.delete(Measurement, { task: { id: t.id } });
+            await entityManager.delete(Qualitative, { task: { id: t.id } });
+            await entityManager.delete(SpecificParameter, { task: { id: t.id } });
+            await entityManager.delete(StandardDetail, { task: { id: t.id } });
+            await entityManager.delete(TaskCertificate, { task: { id: t.id } });
             await entityManager.delete(Task, t.id);
           }
         } else {
@@ -798,8 +889,17 @@ export class TaskService {
         eq = await entityManager.save(Equipment, eq);
 
         const year = 2026;
-        const count = await entityManager.count(Task, { where: {} });
-        const cal_no = `CAL-${year}-${String(count + 1).padStart(4, '0')}`;
+        const baseCount = await entityManager.count(Task, { where: {} });
+        
+        let suffix = baseCount + 1;
+        let cal_no = `CAL-${year}-${String(suffix).padStart(4, '0')}`;
+        
+        let exists = await entityManager.findOne(Task, { where: { cal_no } });
+        while (exists) {
+          suffix++;
+          cal_no = `CAL-${year}-${String(suffix).padStart(4, '0')}`;
+          exists = await entityManager.findOne(Task, { where: { cal_no } });
+        }
 
         const task = new Task();
         task.equipment_id = eq.id;

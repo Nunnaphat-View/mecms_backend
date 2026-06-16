@@ -8,12 +8,14 @@ import { StorageModule } from '../storage/storage.module.js';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { AuditLogModule } from '../audit-log/audit-log.module.js';
 
 @Module({
   imports: [
     UserModule,
     StorageModule,
     PassportModule,
+    AuditLogModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

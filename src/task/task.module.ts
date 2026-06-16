@@ -14,6 +14,7 @@ import { StorageModule } from '../storage/storage.module.js';
 import { StandardDetail } from './entities/standard-detail.entity.js';
 import { GeminiModule } from '../gemini/gemini.module.js';
 import { TaskCertificate } from './entities/task-certificate.entity.js';
+import { AuditLogModule } from '../audit-log/audit-log.module.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TaskCertificate } from './entities/task-certificate.entity.js';
     EquipmentModule,
     StorageModule,
     GeminiModule,
+    AuditLogModule,
   ],
   controllers: [TaskController],
   providers: [TaskService],

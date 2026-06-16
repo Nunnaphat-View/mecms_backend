@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable prettier/prettier */
 import {
   Controller,
   Get,
@@ -9,6 +12,7 @@ import {
   ParseIntPipe,
   UseInterceptors,
   UploadedFile,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -58,14 +62,14 @@ export class TaskController {
     status: 201,
     description: 'Task ถูกสร้างสำเร็จ พร้อม task_id',
   })
-  create(@Body() dto: CreateTaskDto) {
-    return this.taskService.create(dto);
+  create(@Body() dto: CreateTaskDto, @Request() req: any) {
+    return this.taskService.create(dto, req.user);
   }
 
   @Patch(':id/submit')
   @ApiOperation({ summary: 'ช่างส่งผลการสอบเทียบ' })
-  submit(@Param('id', ParseIntPipe) id: number, @Body() dto: SubmitTaskDto) {
-    return this.taskService.submitTask(id, dto);
+  submit(@Param('id', ParseIntPipe) id: number, @Body() dto: SubmitTaskDto, @Request() req: any) {
+    return this.taskService.submitTask(id, dto, req.user);
   }
 
   @Patch(':id/approve')
@@ -73,8 +77,9 @@ export class TaskController {
   approveTask(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ApproveTaskDto,
+    @Request() req: any,
   ) {
-    return this.taskService.approveTask(id, dto);
+    return this.taskService.approveTask(id, dto, req.user);
   }
 
   @Post(':id/upload-cer')
@@ -111,8 +116,9 @@ export class TaskController {
   assignTechnician(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignTechnicianDto,
+    @Request() req: any,
   ) {
-    return this.taskService.assignTechnicianToTask(id, dto.technician_id);
+    return this.taskService.assignTechnicianToTask(id, dto.technician_id, req.user);
   }
 
   @Post('seed')
@@ -124,8 +130,8 @@ export class TaskController {
   @Patch('reschedule')
   @ApiOperation({ summary: 'ย้ายวันที่สอบเทียบของกลุ่มงาน (Drag & Drop)' })
   @ApiResponse({ status: 200, description: 'อัปเดตวันสอบเทียบสำเร็จ' })
-  reschedule(@Body() dto: RescheduleTasksDto) {
-    return this.taskService.rescheduleTasksToDate(dto.taskIds, dto.newDate);
+  reschedule(@Body() dto: RescheduleTasksDto, @Request() req: any) {
+    return this.taskService.rescheduleTasksToDate(dto.taskIds, dto.newDate, req.user);
   }
 
   @Post('schedule/analyze')

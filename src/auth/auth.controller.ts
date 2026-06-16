@@ -24,7 +24,20 @@ import { RegisterDto } from './dto/register.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 interface RequestWithUser {
-  user: { userId: number; username: string };
+  user: {
+    userId: number;
+    username: string;
+    ip?: string;
+    userAgent?: string;
+  };
+}
+
+interface AuditRequest {
+  ip?: string;
+  headers: Record<string, string | undefined>;
+  connection?: {
+    remoteAddress?: string;
+  };
 }
 
 @ApiTags('Auth')
@@ -56,6 +69,7 @@ export class AuthController {
   @UseInterceptors(FileInterceptor('image', { storage: memoryStorage() }))
   async register(
     @Body() registerDto: RegisterDto,
+    @Request() req: AuditRequest,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (file) {
@@ -64,13 +78,19 @@ export class AuthController {
         'profiles',
       );
     }
-    return this.authService.register(registerDto);
+    const ip =
+      req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.register(registerDto, ip, userAgent);
   }
 
   @Post('login')
   @ApiOperation({ summary: 'เข้าสู่ระบบ' })
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  login(@Body() loginDto: LoginDto, @Request() req: AuditRequest) {
+    const ip =
+      req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.login(loginDto, ip, userAgent);
   }
 
   @UseGuards(JwtAuthGuard)

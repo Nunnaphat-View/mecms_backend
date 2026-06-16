@@ -7,9 +7,13 @@ import { EquipmentService } from './equipment.service.js';
 import { EquipmentTypeService } from './equipment-type.service.js';
 import { EquipmentController } from './equipment.controller.js';
 import { EquipmentTypeController } from './equipment-type.controller.js';
+import { AuditLogModule } from '../audit-log/audit-log.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Equipment, EquipmentType, Task])],
+  imports: [
+    TypeOrmModule.forFeature([Equipment, EquipmentType, Task]),
+    AuditLogModule,
+  ],
   controllers: [EquipmentController, EquipmentTypeController],
   providers: [EquipmentService, EquipmentTypeService],
   exports: [EquipmentService, EquipmentTypeService],

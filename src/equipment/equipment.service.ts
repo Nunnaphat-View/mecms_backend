@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,6 +7,7 @@ import { Equipment } from './equipment.entity.js';
 import { Task } from '../task/task.entity.js';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
+import { AuditLogService } from '../audit-log/audit-log.service.js';
 
 @Injectable()
 export class EquipmentService {
@@ -14,6 +16,7 @@ export class EquipmentService {
     private readonly equipmentRepo: Repository<Equipment>,
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   findAll(): Promise<Equipment[]> {
@@ -73,33 +76,83 @@ export class EquipmentService {
     };
   }
 
-  async create(dto: CreateEquipmentDto): Promise<Equipment> {
+  async create(dto: CreateEquipmentDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Equipment> {
     const equipment = this.equipmentRepo.create(dto);
     const saved = await this.equipmentRepo.save(equipment);
-    return this.findOne(saved.id) as Promise<Equipment>;
+    const result = await this.findOne(saved.id);
+
+    if (currentUser) {
+      await this.auditLogService.createLog({
+        userId: currentUser.userId,
+        action: 'EQUIPMENT_CREATE',
+        resourceName: 'Equipment',
+        resourceId: String(saved.id),
+        oldValues: null,
+        newValues: result,
+        ipAddress: currentUser.ip,
+        userAgent: currentUser.userAgent,
+      });
+    }
+
+    return result as Equipment;
   }
 
-  async update(id: number, dto: UpdateEquipmentDto): Promise<Equipment> {
+  async update(id: number, dto: UpdateEquipmentDto, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<Equipment> {
     const equipment = await this.findOne(id);
     if (!equipment) {
       throw new NotFoundException(`Equipment #${id} not found`);
     }
+
+    const oldValues = { ...equipment };
 
     if (dto.equipment_type_id !== undefined) {
       delete (equipment as any).equipmentType;
     }
 
+    if (dto.sectionId !== undefined) {
+      delete (equipment as any).section;
+    }
+
     Object.assign(equipment, dto);
     await this.equipmentRepo.save(equipment);
-    return this.findOne(id) as Promise<Equipment>;
+    const result = await this.findOne(id);
+
+    if (currentUser) {
+      await this.auditLogService.createLog({
+        userId: currentUser.userId,
+        action: 'EQUIPMENT_UPDATE',
+        resourceName: 'Equipment',
+        resourceId: String(id),
+        oldValues,
+        newValues: result,
+        ipAddress: currentUser.ip,
+        userAgent: currentUser.userAgent,
+      });
+    }
+
+    return result as Equipment;
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, currentUser?: { userId: number; ip?: string; userAgent?: string }): Promise<void> {
     const equipment = await this.findOne(id);
     if (!equipment) {
       throw new NotFoundException(`Equipment #${id} not found`);
     }
+    const oldValues = { ...equipment };
     await this.equipmentRepo.softRemove(equipment);
+
+    if (currentUser) {
+      await this.auditLogService.createLog({
+        userId: currentUser.userId,
+        action: 'EQUIPMENT_DELETE',
+        resourceName: 'Equipment',
+        resourceId: String(id),
+        oldValues,
+        newValues: null,
+        ipAddress: currentUser.ip,
+        userAgent: currentUser.userAgent,
+      });
+    }
   }
 
   async getUniqueToolNames(): Promise<string[]> {

@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   UseGuards,
   NotFoundException,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,6 +23,15 @@ import { EquipmentService } from './equipment.service.js';
 import { CreateEquipmentDto } from './dto/create-equipment.dto.js';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto.js';
 import { Public } from '../auth/decorators/public.decorator.js';
+
+interface RequestWithUser {
+  user: {
+    userId: number;
+    username: string;
+    ip?: string;
+    userAgent?: string;
+  };
+}
 
 @ApiTags('Equipment')
 @Controller('equipment')
@@ -72,8 +82,8 @@ export class EquipmentController {
   @Post()
   @ApiOperation({ summary: 'เพิ่มเครื่องมือใหม่' })
   @ApiResponse({ status: 201, description: 'เพิ่มเครื่องมือสำเร็จ' })
-  create(@Body() dto: CreateEquipmentDto) {
-    return this.equipmentService.create(dto);
+  create(@Body() dto: CreateEquipmentDto, @Request() req: RequestWithUser) {
+    return this.equipmentService.create(dto, req.user);
   }
 
   @Patch(':id')
@@ -84,8 +94,9 @@ export class EquipmentController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateEquipmentDto,
+    @Request() req: RequestWithUser,
   ) {
-    return this.equipmentService.update(id, dto);
+    return this.equipmentService.update(id, dto, req.user);
   }
 
   @Delete(':id')
@@ -93,8 +104,11 @@ export class EquipmentController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'ลบสำเร็จ' })
   @ApiResponse({ status: 404, description: 'ไม่พบเครื่องมือ' })
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.equipmentService.remove(id);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: RequestWithUser,
+  ) {
+    await this.equipmentService.remove(id, req.user);
     return { success: true };
   }
 }
