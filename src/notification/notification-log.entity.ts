@@ -27,7 +27,7 @@ export class NotificationLog {
   equipmentId: number | null;
 
   @Column({ type: 'int', nullable: true })
-  recipientId: number | null;
+  userId: number | null;
 
   @Column({
     type: 'enum',

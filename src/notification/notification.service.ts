@@ -240,7 +240,7 @@ export class NotificationService {
         channel: 'line',
         notificationType: 'CALIBRATION_DUE_7_DAYS',
         equipmentId: eq.id,
-        recipientId: lastTask?.technician?.id || null,
+        userId: lastTask?.technician?.id || null,
         status: 'pending',
       });
       await this.notificationLogRepo.save(log);

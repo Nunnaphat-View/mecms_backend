@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "notification_logs" (
     "channel" "notification_logs_channel_enum" NOT NULL DEFAULT 'line',
     "notificationType" character varying(100) NOT NULL,
     "equipmentId" integer,
-    "recipientId" integer,
+    "userId" integer,
     "status" "notification_logs_status_enum" NOT NULL DEFAULT 'pending',
     "errorMessage" text,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -22,4 +22,4 @@ CREATE TABLE IF NOT EXISTS "notification_logs" (
     CONSTRAINT "PK_notification_logs_id" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "IDX_notification_logs_lookup" ON "notification_logs" ("notificationType", "equipmentId", "recipientId");
+CREATE INDEX IF NOT EXISTS "IDX_notification_logs_lookup" ON "notification_logs" ("notificationType", "equipmentId", "userId");
