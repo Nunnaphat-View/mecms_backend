@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
@@ -187,164 +188,190 @@ export class TaskService {
     );
     console.log(`=== Submitting task ${id} ===`);
     try {
-      // Load task WITHOUT the child relations (environments/measurements/qualitatives)
-      // If TypeORM never loads those arrays, it CANNOT cascade-nullify them later
-      const task = await this.taskRepo.findOne({
-        where: { id },
-        relations: [
-          'equipment',
-          'equipment.section',
-          'equipment.section.hospital',
-          'standardDetails',
-          'standardDetails.standardTool',
-          'technician',
-          'technician.hospital',
-        ],
-      });
-      if (!task) throw new NotFoundException(`Task #${id} not found`);
-      console.log(`Task found: id=${task.id}`);
+      const finalTask = await this.dataSource.transaction(async (manager) => {
+        // Load task WITHOUT the child relations
+        const task = await manager.findOne(Task, {
+          where: { id },
+          relations: [
+            'equipment',
+            'equipment.section',
+            'equipment.section.hospital',
+            'standardDetails',
+            'standardDetails.standardTool',
+            'technician',
+            'technician.hospital',
+          ],
+        });
+        if (!task) throw new NotFoundException(`Task #${id} not found`);
+        console.log(`Task found in transaction: id=${task.id}`);
 
-      const oldValues = { ...task };
+        const oldValues = { ...task };
 
-      // 0. Clear old data from DB
-      await this.environmentRepo.delete({ task_id: id });
-      await this.measurementRepo.delete({ task_id: id });
-      await this.qualitativeRepo.delete({ task_id: id });
-      await this.specificParameterRepo.delete({ task_id: id });
-      console.log('Old data cleared');
+        // 0. Clear old data from DB
+        await manager.delete(Environment, { task_id: id });
+        await manager.delete(Measurement, { task_id: id });
+        await manager.delete(Qualitative, { task_id: id });
+        await manager.delete(SpecificParameter, { task_id: id });
+        console.log('Old data cleared');
 
-      // 1. Save Environment - use task object so TypeORM sets the FK correctly
-      if (
-        dto.ambient_temp !== undefined ||
-        dto.ambient_humidity !== undefined
-      ) {
-        const env = new Environment();
-        env.ambient_temp = dto.ambient_temp ?? 0;
-        env.ambient_humidity = dto.ambient_humidity ?? 0;
-        env.task = task;
-        await this.environmentRepo.save(env);
-        console.log('Environment saved');
-      }
-
-      // 2. Save Measurements - use task object so TypeORM sets the FK correctly
-      if (dto.measurements && dto.measurements.length > 0) {
-        for (const m of dto.measurements) {
-          const measurement = new Measurement();
-          measurement.parameter_name = m.parameter_name ?? null;
-          measurement.result = m.result;
-          measurement.display_type = m.display_type ?? null;
-          measurement.resolution = m.resolution ?? null;
-          measurement.std_type = m.std_type ?? null;
-          measurement.task = task;
-
-          // Pack numeric results into JSONB data column
-          measurement.data = {
-            range: m.range ?? 0,
-            standard_value: m.standard_value ?? 0,
-            reading_1: m.reading_1 ?? null,
-            reading_2: m.reading_2 ?? null,
-            reading_3: m.reading_3 ?? null,
-            average_value: m.average_value ?? 0,
-            error_value: m.error_value ?? 0,
-            std_reading_1: m.std_reading_1 ?? null,
-            std_reading_2: m.std_reading_2 ?? null,
-            std_reading_3: m.std_reading_3 ?? null,
-            average_standard: m.average_standard ?? null,
-          };
-
-          await this.measurementRepo.save(measurement);
-        }
-        console.log(`${dto.measurements.length} measurements saved`);
-      }
-
-      // 3. Save Qualitatives - use task object so TypeORM sets the FK correctly
-      if (dto.qualitatives && dto.qualitatives.length > 0) {
-        for (const q of dto.qualitatives) {
-          const qualitative = new Qualitative();
-          qualitative.parameter_name = q.parameter_name ?? null;
-          qualitative.item_name = q.item_name;
-          qualitative.result = q.result;
-          qualitative.task = task;
-          await this.qualitativeRepo.save(qualitative);
-        }
-        console.log(`${dto.qualitatives.length} qualitatives saved`);
-      }
-
-      // 4. Save Specific Parameters
-      if (dto.specific_parameters && dto.specific_parameters.length > 0) {
-        for (const sp of dto.specific_parameters) {
-          const specificParam = new SpecificParameter();
-          specificParam.name = sp.name;
-          specificParam.value = sp.value ?? null;
-          specificParam.unit = sp.unit ?? null;
-          specificParam.task = task;
-          await this.specificParameterRepo.save(specificParam);
-        }
-        console.log(
-          `${dto.specific_parameters.length} specific parameters saved`,
-        );
-      }
-
-      // 5. Link Standard Tools
-      if (dto.standard_tool_ids) {
-        console.log(
-          `Explicitly linking tools for task ${id}:`,
-          dto.standard_tool_ids,
-        );
-        // Clear old ones first to prevent duplicates (since it's a junction table)
-        await this.standardDetailRepo.delete({ task_id: id });
-
-        if (dto.standard_tool_ids.length > 0) {
-          task.standardDetails = dto.standard_tool_ids.map((toolId) => {
-            const detail = new StandardDetail();
-            detail.standard_tool_id = toolId;
-            return detail;
+        // 1. Save Environment
+        if (
+          dto.ambient_temp !== undefined ||
+          dto.ambient_humidity !== undefined
+        ) {
+          const env = manager.create(Environment, {
+            ambient_temp: dto.ambient_temp ?? 0,
+            ambient_humidity: dto.ambient_humidity ?? 0,
+            task,
           });
-        } else {
-          task.standardDetails = [];
+          await manager.save(Environment, env);
+          console.log('Environment saved');
         }
-      }
 
-      // Create unified snapshot in TaskCertificate table
-      const targetHospital =
-        task.technician?.hospital || task.equipment?.section?.hospital;
+        // 2. Save Measurements
+        if (dto.measurements && dto.measurements.length > 0) {
+          const measurementsToSave = dto.measurements.map((m) => {
+            return manager.create(Measurement, {
+              parameter_name: m.parameter_name ?? null,
+              result: m.result,
+              display_type: m.display_type ?? null,
+              resolution: m.resolution ?? null,
+              std_type: m.std_type ?? null,
+              task,
+              data: {
+                range: m.range ?? 0,
+                standard_value: m.standard_value ?? 0,
+                reading_1: m.reading_1 ?? null,
+                reading_2: m.reading_2 ?? null,
+                reading_3: m.reading_3 ?? null,
+                average_value: m.average_value ?? 0,
+                error_value: m.error_value ?? 0,
+                std_reading_1: m.std_reading_1 ?? null,
+                std_reading_2: m.std_reading_2 ?? null,
+                std_reading_3: m.std_reading_3 ?? null,
+                average_standard: m.average_standard ?? null,
+              },
+            });
+          });
+          await manager.save(Measurement, measurementsToSave);
+          console.log(`${dto.measurements.length} measurements batch saved`);
+        }
 
-      let cert = await this.taskCertificateRepo.findOne({
-        where: { task_id: id },
+        // 3. Save Qualitatives
+        if (dto.qualitatives && dto.qualitatives.length > 0) {
+          const qualitativesToSave = dto.qualitatives.map((q) => {
+            return manager.create(Qualitative, {
+              parameter_name: q.parameter_name ?? null,
+              item_name: q.item_name,
+              result: q.result,
+              task,
+            });
+          });
+          await manager.save(Qualitative, qualitativesToSave);
+          console.log(`${dto.qualitatives.length} qualitatives batch saved`);
+        }
+
+        // 4. Save Specific Parameters
+        if (dto.specific_parameters && dto.specific_parameters.length > 0) {
+          const specificParamsToSave = dto.specific_parameters.map((sp) => {
+            return manager.create(SpecificParameter, {
+              name: sp.name,
+              value: sp.value ?? null,
+              unit: sp.unit ?? null,
+              task,
+            });
+          });
+          await manager.save(SpecificParameter, specificParamsToSave);
+          console.log(
+            `${dto.specific_parameters.length} specific parameters batch saved`,
+          );
+        }
+
+        // 5. Link Standard Tools
+        if (dto.standard_tool_ids) {
+          console.log(
+            `Explicitly linking tools for task ${id}:`,
+            dto.standard_tool_ids,
+          );
+          // Clear old ones first to prevent duplicates
+          await manager.delete(StandardDetail, { task_id: id });
+
+          if (dto.standard_tool_ids.length > 0) {
+            const detailsToSave = dto.standard_tool_ids.map((toolId) => {
+              const detail = new StandardDetail();
+              detail.task_id = id;
+              detail.standard_tool_id = toolId;
+              return detail;
+            });
+            task.standardDetails = await manager.save(StandardDetail, detailsToSave);
+          } else {
+            task.standardDetails = [];
+          }
+        }
+
+        // Create unified snapshot in TaskCertificate table
+        const targetHospital =
+          task.technician?.hospital || task.equipment?.section?.hospital;
+
+        let cert = await manager.findOne(TaskCertificate, {
+          where: { task_id: id },
+        });
+        if (!cert) {
+          cert = manager.create(TaskCertificate, { task_id: id });
+        }
+
+        if (targetHospital) {
+          cert.hospital_name = targetHospital.name;
+          cert.hospital_logo_url = targetHospital.logoUrl;
+          cert.hospital_address = targetHospital.address;
+          cert.hospital_district = targetHospital.district;
+          cert.hospital_province = targetHospital.province;
+          cert.hospital_zip_code = targetHospital.zipCode;
+        }
+        cert.department_name = task.equipment?.section?.name || null;
+        if (task.technician) {
+          cert.technician_name = task.technician.name || '';
+          cert.technician_signature_url = task.technician.signatureUrl;
+        }
+        await manager.save(TaskCertificate, cert);
+
+        task.overall_result = dto.overall_result;
+        task.status = dto.status || 'PendingApproval';
+
+        if (task.equipment_id) {
+          const finalEqStatus =
+            task.overall_result === 'Fail' ? 'disabled' : 'calibrating';
+          const equipment = await manager.findOne(Equipment, {
+            where: { id: task.equipment_id },
+          });
+          if (equipment) {
+            equipment.status = finalEqStatus;
+            await manager.save(Equipment, equipment);
+          }
+        }
+
+        const savedTask = await manager.save(Task, task);
+        savedTask.certificate = cert;
+        this.mapCertificateData(savedTask);
+
+        if (currentUser) {
+          await this.auditLogService.createLog(
+            {
+              userId: currentUser.userId,
+              action: 'TASK_SUBMIT_RESULT',
+              resourceName: 'Task',
+              resourceId: String(id),
+              oldValues,
+              newValues: savedTask,
+              ipAddress: currentUser.ip,
+              userAgent: currentUser.userAgent,
+            },
+            manager,
+          );
+        }
+
+        return savedTask;
       });
-      if (!cert) {
-        cert = this.taskCertificateRepo.create({ task_id: id });
-      }
-
-      if (targetHospital) {
-        cert.hospital_name = targetHospital.name;
-        cert.hospital_logo_url = targetHospital.logoUrl;
-        cert.hospital_address = targetHospital.address;
-        cert.hospital_district = targetHospital.district;
-        cert.hospital_province = targetHospital.province;
-        cert.hospital_zip_code = targetHospital.zipCode;
-      }
-      cert.department_name = task.equipment?.section?.name || null;
-      if (task.technician) {
-        cert.technician_name = task.technician.name || '';
-        cert.technician_signature_url = task.technician.signatureUrl;
-      }
-      await this.taskCertificateRepo.save(cert);
-
-      task.overall_result = dto.overall_result;
-      task.status = dto.status || 'PendingApproval';
-
-      if (task.equipment_id) {
-        const finalEqStatus =
-          task.overall_result === 'Fail' ? 'disabled' : 'calibrating';
-        await this.equipmentService.update(task.equipment_id, {
-          status: finalEqStatus,
-        } as any);
-      }
-
-      const finalTask = await this.taskRepo.save(task);
-      finalTask.certificate = cert;
-      this.mapCertificateData(finalTask);
 
       if (dto.standard_tool_ids && dto.standard_tool_ids.length > 0) {
         finalTask.standardTools = await this.standardToolRepo.find({
@@ -354,21 +381,7 @@ export class TaskService {
         finalTask.standardTools = [];
       }
 
-      if (currentUser) {
-        await this.auditLogService.createLog({
-          userId: currentUser.userId,
-          action: 'TASK_SUBMIT_RESULT',
-          resourceName: 'Task',
-          resourceId: String(id),
-          oldValues,
-          newValues: finalTask,
-          ipAddress: currentUser.ip,
-          userAgent: currentUser.userAgent,
-        });
-      }
-
       console.log('=== Task submitted successfully ===');
-
       return finalTask;
     } catch (error) {
       console.error('Submit Task Error:', error);
