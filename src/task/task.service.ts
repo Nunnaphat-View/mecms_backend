@@ -303,7 +303,10 @@ export class TaskService {
               detail.standard_tool_id = toolId;
               return detail;
             });
-            task.standardDetails = await manager.save(StandardDetail, detailsToSave);
+            task.standardDetails = await manager.save(
+              StandardDetail,
+              detailsToSave,
+            );
           } else {
             task.standardDetails = [];
           }
