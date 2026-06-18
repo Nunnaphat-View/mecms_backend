@@ -59,7 +59,10 @@ describe('UserService', () => {
       providers: [
         UserService,
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
-        { provide: getRepositoryToken(UserSpecialty), useValue: mockUserSpecialtyRepository },
+        {
+          provide: getRepositoryToken(UserSpecialty),
+          useValue: mockUserSpecialtyRepository,
+        },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
@@ -149,7 +152,9 @@ describe('UserService', () => {
     it('should throw ConflictException if username already exists', async () => {
       userRepository.findOne.mockResolvedValue(mockUser); // Existing username found
 
-      await expect(userService.create(createUserDto)).rejects.toThrow(ConflictException);
+      await expect(userService.create(createUserDto)).rejects.toThrow(
+        ConflictException,
+      );
       expect(userRepository.save).not.toHaveBeenCalled();
     });
   });
@@ -179,13 +184,22 @@ describe('UserService', () => {
         find: jest.fn().mockResolvedValue([{ userId: 1, toolName: 'Tool A' }]),
       } as unknown as EntityManager;
 
-      dataSource.transaction.mockImplementation((cb: any) => cb(mockEntityManager));
+      dataSource.transaction.mockImplementation((cb: any) =>
+        cb(mockEntityManager),
+      );
 
       const result = await userService.updateSpecialties(1, ['Tool A']);
 
-      expect(mockEntityManager.delete).toHaveBeenCalledWith(UserSpecialty, { userId: 1 });
-      expect(mockEntityManager.save).toHaveBeenCalledWith(UserSpecialty, expect.any(Array));
-      expect(mockEntityManager.find).toHaveBeenCalledWith(UserSpecialty, { where: { userId: 1 } });
+      expect(mockEntityManager.delete).toHaveBeenCalledWith(UserSpecialty, {
+        userId: 1,
+      });
+      expect(mockEntityManager.save).toHaveBeenCalledWith(
+        UserSpecialty,
+        expect.any(Array),
+      );
+      expect(mockEntityManager.find).toHaveBeenCalledWith(UserSpecialty, {
+        where: { userId: 1 },
+      });
       expect(result).toEqual([{ userId: 1, toolName: 'Tool A' }]);
     });
   });
