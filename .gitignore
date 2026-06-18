@@ -89,3 +89,6 @@ _bmad-output/
 .obsidian/
 *.canvas
 *.base
+
+# Test Reports
+/test_report

@@ -33,10 +33,10 @@ export class User {
   tel: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  signatureUrl: string;
+  signatureUrl: string | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  imageUrl: string;
+  imageUrl: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   lineUserId: string;
