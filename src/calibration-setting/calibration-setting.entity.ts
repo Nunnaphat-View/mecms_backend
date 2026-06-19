@@ -4,10 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
 import { StandardTool } from '../standard-tool/standard-tool.entity';
-import { SettingTool } from './setting-tool.entity';
 
 export interface ICalibrationTestValue {
   label: string;
@@ -52,11 +50,6 @@ export class CalibrationSetting {
 
   @Column({ type: 'json', nullable: true })
   test_values: ICalibrationTestValue[];
-
-  @OneToMany(() => SettingTool, (st) => st.calibrationSetting, {
-    cascade: true,
-  })
-  settingTools: SettingTool[];
 
   standardTools?: StandardTool[];
 
